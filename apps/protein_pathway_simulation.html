@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>단백질은 어떻게 만들어지고 이동할까 — 합성·분비 경로 시뮬레이션</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf7f0;
+    --card:#ffffff;
+    --line:#e7ddc8;
+    --ink:#2b2620;
+    --ink-dim:#7a7060;
+    --p1:#2F9E8F;
+    --p1-deep:#1F6E63;
+    --p2:#D9587A;
+    --p2-deep:#A83D5B;
+    --gold:#D9A441;
+    --shadow: rgba(60,45,20,0.10);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:30px 20px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-dim); display:flex; align-items:center; gap:8px; margin-bottom:12px;
+  }
+  .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);}
+  h1{
+    font-family:'Fraunces',serif; font-weight:700;
+    font-size:clamp(26px,3.6vw,38px); margin:0 0 10px; letter-spacing:-0.01em;
+  }
+  .sub{color:var(--ink-dim); font-size:15px; max-width:680px; line-height:1.65; margin:0 0 26px;}
+
+  .path-tabs{display:flex; gap:12px; margin-bottom:22px; flex-wrap:wrap;}
+  .path-tab{
+    flex:1; min-width:260px;
+    background:var(--card); border:2px solid var(--line); border-radius:14px;
+    padding:16px 18px; cursor:pointer; text-align:left; transition:.15s;
+  }
+  .path-tab .pt-label{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim); margin-bottom:6px;}
+  .path-tab h3{font-family:'Fraunces',serif; font-size:17px; margin:0 0 4px; font-weight:600;}
+  .path-tab p{margin:0; font-size:12.5px; color:var(--ink-dim); line-height:1.5;}
+  .path-tab.active[data-p="p1"]{border-color:var(--p1); background:linear-gradient(180deg,rgba(47,158,143,0.06),transparent);}
+  .path-tab.active[data-p="p2"]{border-color:var(--p2); background:linear-gradient(180deg,rgba(217,88,122,0.06),transparent);}
+  .path-tab.active .pt-label{font-weight:700;}
+  .path-tab.active[data-p="p1"] .pt-label{color:var(--p1-deep);}
+  .path-tab.active[data-p="p2"] .pt-label{color:var(--p2-deep);}
+
+  .stage-wrap{
+    display:grid; grid-template-columns: minmax(0,1.35fr) minmax(280px,0.85fr);
+    gap:20px;
+  }
+  @media (max-width:900px){ .stage-wrap{grid-template-columns:1fr;} }
+
+  .canvas-card{
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:14px; box-shadow:0 14px 32px -22px var(--shadow);
+  }
+  .caption-bar{
+    display:flex; align-items:center; gap:10px;
+    font-family:'JetBrains Mono',monospace; font-size:12.5px;
+    padding:9px 14px; border-radius:9px; margin-bottom:10px;
+    background:#f4efe2; color:var(--ink);
+  }
+  .caption-bar .cdot{width:8px;height:8px;border-radius:50%; flex:none;}
+  svg#cellSvg{width:100%; height:auto; display:block;}
+
+  .controls{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  .ctl-btn{
+    flex:1; min-width:86px;
+    background:#f4efe2; border:1px solid var(--line); color:var(--ink);
+    font-weight:600; font-size:13px; padding:10px 8px; border-radius:9px; cursor:pointer;
+  }
+  .ctl-btn:hover{border-color:var(--gold);}
+  .ctl-btn.primary{background:var(--gold); color:#3a2a08; border-color:var(--gold);}
+  .ctl-btn:disabled{opacity:.4; cursor:default;}
+
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .panel h4{font-family:'Fraunces',serif; font-size:15.5px; margin:0; font-weight:600;}
+  .steps{display:flex; flex-direction:column; gap:2px;}
+  .step-item{display:flex; gap:10px; padding:9px 8px; border-radius:8px; cursor:pointer; transition:.12s;}
+  .step-item:hover{background:#f4efe2;}
+  .step-item .snum{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);
+    width:20px; height:20px; border-radius:50%; border:1.5px solid var(--line);
+    display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px;
+  }
+  .step-item.done .snum{background:var(--line); color:var(--ink);}
+  .step-item.active .snum{border-color:var(--gold); background:var(--gold); color:#3a2a08; font-weight:700;}
+  .step-item .stxt{font-size:12.8px; line-height:1.5;}
+  .step-item.active .stxt{font-weight:700; color:var(--ink);}
+  .step-item:not(.active) .stxt{color:var(--ink-dim);}
+
+  .desc-box{background:#f4efe2; border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.65; color:var(--ink); min-height:70px;}
+
+  .compare{margin-top:24px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px;}
+  .compare h3{font-family:'Fraunces',serif; font-size:18px; margin:0 0 14px;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--line);}
+  th{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.04em;}
+  td.p1{color:var(--p1-deep); font-weight:600;}
+  td.p2{color:var(--p2-deep); font-weight:600;}
+
+  footer{margin-top:26px; font-size:11.5px; color:var(--ink-dim); line-height:1.7;}
+
+  @keyframes pulseRing{ 0%{ r:6; opacity:.9; } 70%{ r:22; opacity:0; } 100%{ r:22; opacity:0; } }
+  .pulse-ring{ animation: pulseRing 1.3s ease-out infinite; }
+
+  @keyframes floatAway{
+    from{ opacity:1; transform:translate(0,0) scale(1); }
+    to{ opacity:0; transform:translate(var(--dx),var(--dy)) scale(0.8); }
+  }
+  .secreted-dot{ animation: floatAway 1.8s ease-out forwards; }
+
+  @keyframes chainIn{ from{opacity:0; transform:scale(0.3);} to{opacity:1; transform:scale(1);} }
+  .chain-dot{ opacity:0; animation: chainIn 380ms ease-out forwards; transform-box: fill-box; transform-origin:center; }
+
+  @keyframes fusionPulse{ from{ opacity:0.9; } to{ opacity:0; } }
+  .fusion-pulse{ animation: fusionPulse 650ms ease-out forwards; }
+
+  @keyframes budGrow{ from{ transform:scale(0.15); } to{ transform:scale(1); } }
+  #markerInner.bud-in{ animation: budGrow 420ms cubic-bezier(.2,.9,.3,1.2); transform-box: fill-box; transform-origin:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">세포 · 유전정보의 발현과 단백질 분비</div>
+  <h1>단백질은 어떻게 만들어지고 이동할까</h1>
+  <p class="sub">DNA 이중나선에서 유전자가 발현되어 단백질이 만들어지고, 막으로 둘러싸인 소낭에 실려 이동·분비되는 과정을 단계별로 자세히 관찰해보세요.</p>
+
+  <div class="path-tabs">
+    <div class="path-tab active" data-p="p1" id="tabP1">
+      <div class="pt-label">경로 1 · 미토콘드리아 단백질</div>
+      <h3>세포호흡 효소</h3>
+      <p>자유 리보솜에서 합성된 뒤, 소포체·골지체를 거치지 않고 미토콘드리아로 직접 이동합니다.</p>
+    </div>
+    <div class="path-tab" data-p="p2" id="tabP2">
+      <div class="pt-label">경로 2 · 분비 단백질</div>
+      <h3>인슐린 호르몬</h3>
+      <p>부착 리보솜(거친면소포체)에서 합성되어 소포체 → 골지체 → 분비소낭을 거쳐 세포 밖으로 분비됩니다.</p>
+    </div>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="canvas-card">
+      <div class="caption-bar"><span class="cdot" id="capDot"></span><span id="capText">경로를 선택하고 재생 버튼을 눌러보세요</span></div>
+      <svg id="cellSvg" viewBox="0 0 640 900" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="controls">
+        <button class="ctl-btn" id="btnPrev">◀ 이전</button>
+        <button class="ctl-btn primary" id="btnPlay">▶ 재생</button>
+        <button class="ctl-btn" id="btnNext">다음 ▶</button>
+        <button class="ctl-btn" id="btnReset">처음부터</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h4 id="panelTitle">경로 1 단계</h4>
+      <div class="steps" id="stepsList"></div>
+      <div class="desc-box" id="descBox">단계를 클릭하면 해당 지점으로 바로 이동합니다.</div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <h3>왜 두 경로가 다를까?</h3>
+    <table>
+      <thead><tr><th>비교 항목</th><th>경로 1 · 세포호흡 효소</th><th>경로 2 · 인슐린 호르몬</th></tr></thead>
+      <tbody>
+        <tr><td>리보솜 종류</td><td class="p1">자유 리보솜 (세포질에 유리)</td><td class="p2">부착 리보솜 (거친면소포체에 붙음)</td></tr>
+        <tr><td>소포체·골지체 경유</td><td class="p1">경유하지 않음</td><td class="p2">경유함 (변형·포장)</td></tr>
+        <tr><td>이동 방식</td><td class="p1">세포질을 가로질러 직접 이동</td><td class="p2">막으로 둘러싸인 소낭에 실려 순차 이동</td></tr>
+        <tr><td>최종 목적지</td><td class="p1">미토콘드리아 내부</td><td class="p2">세포 밖 (분비)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>원본 세포 그림은 업로드된 자료(2013 Animal Physiology — From Genes to Organisms)를 참고해 재구성했으며, 미토콘드리아를 추가하고 DNA 이중나선·전사·막 융합 애니메이션을 새로 제작했습니다.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+// ---------------- coordinates ----------------
+const GENE_POINT = {x:230,y:108};
+const TAIL_START = {x:230,y:66};
+const TAIL_END   = {x:288,y:142};
+const PORE_IN  = {x:322,y:172};
+const PORE_OUT = {x:352,y:190};
+const FREE_RIBO = {x:486,y:258};
+const MITO_ENTRY = {x:214,y:712};
+const MITO_CENTER = {x:150,y:758};
+
+const ER_DOCK = {x:360,y:238};
+const ER_PATH = [ER_DOCK, {x:322,y:258},{x:280,y:282},{x:236,y:305},{x:280,y:330},{x:326,y:355},{x:284,y:382},{x:330,y:408},{x:378,y:428}];
+const ER_EXIT = ER_PATH[ER_PATH.length-1];
+const VBUD1 = {x:424,y:444};
+const V1_TRAVEL = [ER_EXIT, VBUD1, {x:380,y:495},{x:322,y:538},{x:278,y:562}];
+const GOLGI_ENTRY = V1_TRAVEL[V1_TRAVEL.length-1];
+const GOLGI_PATH = [GOLGI_ENTRY, {x:206,y:588},{x:156,y:618},{x:206,y:648},{x:270,y:668},{x:322,y:688}];
+const GOLGI_EXIT = GOLGI_PATH[GOLGI_PATH.length-1];
+const VBUD2 = {x:352,y:706};
+const V2_TRAVEL = [GOLGI_EXIT, VBUD2, {x:420,y:748},{x:478,y:786},{x:520,y:812}];
+const MEMBRANE_PT = V2_TRAVEL[V2_TRAVEL.length-1];
+const OUTSIDE_PT = {x:552,y:828};
+
+// ---------------- stage definitions ----------------
+const PATHS = {
+  p1: {
+    color:'#2F9E8F', colorDeep:'#1F6E63',
+    geneLabel:'세포호흡 효소 유전자',
+    stages:[
+      {label:'DNA 이중나선에서 유전자 발현 시작 (전사)', desc:'핵 속 DNA 이중나선의 세포호흡 효소 유전자 부위가 풀리며 전사가 시작되어 mRNA가 합성됩니다.', type:'dna', typeAfter:'mrna', points:[TAIL_START,TAIL_END], onStart:()=>growTail(TAIL_START,TAIL_END,700)},
+      {label:'핵공을 통해 세포질로 이동', desc:'mRNA가 핵막의 핵공을 통과해 세포질로 빠져나갑니다.', type:'mrna', points:[TAIL_END,PORE_IN,PORE_OUT], onStart:()=>hideTail()},
+      {label:'자유 리보솜에서 번역 (단백질 합성)', desc:'세포질에 떠 있는 자유 리보솜에서 mRNA가 번역되어 단백질이 합성됩니다. 이 단백질은 거친면소포체를 거치지 않습니다.', type:'mrna', typeAfter:'protein1', points:[PORE_OUT,FREE_RIBO], onStart:()=>pulseChain(FREE_RIBO,750)},
+      {label:'미토콘드리아로 직접 이동', desc:'합성된 단백질이 소포체·골지체를 거치지 않고 세포질을 가로질러 미토콘드리아로 직접 이동합니다.', type:'protein1', points:[FREE_RIBO,MITO_ENTRY,MITO_CENTER]},
+      {label:'완료 · 미토콘드리아에서 기능 수행', desc:'단백질이 미토콘드리아 안으로 들어가 세포호흡에 필요한 효소로 기능합니다.', type:'protein1', points:[MITO_CENTER]}
+    ]
+  },
+  p2: {
+    color:'#D9587A', colorDeep:'#A83D5B',
+    geneLabel:'인슐린 유전자',
+    stages:[
+      {label:'DNA 이중나선에서 유전자 발현 시작 (전사)', desc:'핵 속 DNA 이중나선의 인슐린 유전자 부위가 풀리며 전사가 시작되어 mRNA가 합성됩니다.', type:'dna', typeAfter:'mrna', points:[TAIL_START,TAIL_END], onStart:()=>growTail(TAIL_START,TAIL_END,700)},
+      {label:'핵공을 통해 세포질로 이동', desc:'mRNA가 핵막의 핵공을 통과해 세포질로 빠져나갑니다.', type:'mrna', points:[TAIL_END,PORE_IN,PORE_OUT], onStart:()=>hideTail()},
+      {label:'거친면소포체 리보솜에서 단백질 합성', desc:'거친면소포체 표면에 붙은 리보솜(부착 리보솜)에서 mRNA가 번역되며, 만들어지는 폴리펩타이드가 곧바로 소포체 내부 공간으로 들어갑니다.', type:'mrna', typeAfter:'protein2', points:[PORE_OUT,ER_DOCK], onStart:()=>pulseChain(ER_DOCK,750)},
+      {label:'거친면소포체 내부로 이동', desc:'합성된 단백질이 거친면소포체 내부 공간(내강)을 따라 이동합니다.', type:'protein2', points:ER_PATH},
+      {label:'소포체막에 둘러싸인 수송소낭 형성 → 골지체로 이동 → 막융합', desc:'소포체막 일부가 볼록하게 부풀어 단백질을 감싼 채 떨어져 나와 수송소낭이 되고, 골지체로 이동해 골지체 막과 융합합니다.', type:'vesicle2', points:V1_TRAVEL, budIn:true},
+      {label:'골지체에서 변형', desc:'융합으로 열린 소낭 속 단백질이 골지체 내부를 통과하며 당 사슬이 붙는 등 화학적으로 변형·가공됩니다.', type:'protein2', typeAfter:'protein2mod', points:GOLGI_PATH, onStart:()=>fusionFlash(GOLGI_ENTRY)},
+      {label:'분비소낭에 둘러싸여 이동', desc:'변형이 끝난 단백질이 골지체막에 둘러싸인 분비소낭 형태로 떨어져 나와 세포막 쪽으로 이동합니다.', type:'vesicle2', points:V2_TRAVEL, budIn:true},
+      {label:'완료 · 세포막과 융합, 세포 밖으로 분비', desc:'분비소낭의 막이 세포막과 융합하여 하나로 합쳐지고, 그 융합 부위가 열리면서 인슐린 호르몬이 세포 밖(혈액)으로 분비됩니다.', type:'vesicle2', typeAfter:'secreted', points:[MEMBRANE_PT,OUTSIDE_PT], onStart:()=>fusionFlash(MEMBRANE_PT)}
+    ]
+  }
+};
+
+// ---------------- SVG static scene ----------------
+const svg = document.getElementById('cellSvg');
+svg.innerHTML = `
+<defs>
+  <radialGradient id="cellGrad" cx="40%" cy="15%" r="90%">
+    <stop offset="0%" stop-color="#fff6e0"/><stop offset="100%" stop-color="#f7d9a0"/>
+  </radialGradient>
+  <radialGradient id="nucGrad" cx="35%" cy="30%" r="80%">
+    <stop offset="0%" stop-color="#efe6f6"/><stop offset="100%" stop-color="#b598d1"/>
+  </radialGradient>
+  <radialGradient id="mitoGrad" cx="40%" cy="35%" r="80%">
+    <stop offset="0%" stop-color="#f0b98a"/><stop offset="100%" stop-color="#c97b4a"/>
+  </radialGradient>
+</defs>
+
+<rect x="26" y="20" width="588" height="862" rx="210" ry="210" fill="url(#cellGrad)" stroke="#E8734A" stroke-width="3"/>
+<text x="60" y="52" font-family="JetBrains Mono, monospace" font-size="11" fill="#b06a3a" opacity="0.7">세포막</text>
+
+<g id="erGroup" stroke="#7EC7DE" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.9">
+  <path d="M 90,238 Q 200,210 300,238 T 400,232" />
+  <path d="M 80,272 Q 190,250 290,272 T 396,266" />
+  <path d="M 76,306 Q 186,286 286,306 T 388,300" />
+  <path d="M 80,340 Q 190,320 288,340 T 384,334" />
+  <path d="M 90,374 Q 196,356 292,374 T 392,368" />
+  <path d="M 104,406 Q 204,392 296,406 T 386,402" />
+</g>
+<g id="riboDots" fill="#B4432F"></g>
+<text x="70" y="228" font-family="JetBrains Mono, monospace" font-size="11" fill="#3f7f96">거친면소포체</text>
+
+<g fill="#DCEFF6" stroke="#7EC7DE" stroke-width="2.5" opacity="0.85">
+  <circle cx="418" cy="392" r="15"/><circle cx="462" cy="412" r="12"/>
+  <circle cx="336" cy="470" r="13"/><circle cx="268" cy="500" r="11"/>
+</g>
+
+<g id="golgiGroup" stroke="#E39BC0" stroke-width="12" fill="none" stroke-linecap="round">
+  <path d="M 100,592 Q 190,566 270,592 T 380,586"/>
+  <path d="M 96,616 Q 186,592 266,616 T 372,610"/>
+  <path d="M 100,640 Q 190,618 268,640 T 368,634"/>
+  <path d="M 110,664 Q 196,644 270,664 T 360,658"/>
+  <path d="M 126,686 Q 200,668 268,686 T 350,680"/>
+</g>
+<text x="90" y="576" font-family="JetBrains Mono, monospace" font-size="11" fill="#a8447a">골지체</text>
+
+<g fill="#F6D6E4" stroke="#E39BC0" stroke-width="2.5" opacity="0.9">
+  <circle cx="404" cy="742" r="13"/><circle cx="452" cy="774" r="11"/><circle cx="494" cy="800" r="9"/>
+</g>
+
+<g transform="translate(150,758) rotate(-12)">
+  <ellipse rx="92" ry="50" fill="url(#mitoGrad)" stroke="#9C5B32" stroke-width="3.4"/>
+  <path d="M -64,-22 Q -44,-36 -24,-22 Q -4,-8 16,-22 Q 36,-36 56,-22" fill="none" stroke="#8C4E2A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M -64,0 Q -44,-14 -24,0 Q -4,14 16,0 Q 36,-14 56,0" fill="none" stroke="#8C4E2A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M -64,22 Q -44,8 -24,22 Q -4,36 16,22 Q 36,8 56,22" fill="none" stroke="#8C4E2A" stroke-width="3" stroke-linecap="round"/>
+</g>
+<text x="66" y="838" font-family="JetBrains Mono, monospace" font-size="11" fill="#9c5b32">미토콘드리아 (추가)</text>
+
+<circle cx="486" cy="258" r="7" fill="#B4432F" opacity="0.9"/>
+<circle cx="486" cy="258" r="16" fill="none" stroke="#B4432F" stroke-width="1.4" stroke-dasharray="3 3" opacity="0.55"/>
+<text x="500" y="252" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#8a3423">자유 리보솜</text>
+
+<circle cx="230" cy="150" r="118" fill="url(#nucGrad)" stroke="#8B6BAE" stroke-width="4"/>
+<circle cx="230" cy="150" r="126" fill="none" stroke="#8B6BAE" stroke-width="3" stroke-dasharray="17 9" opacity="0.75"/>
+<text x="150" y="46" font-family="JetBrains Mono, monospace" font-size="11" fill="#6d4f8e">핵</text>
+
+<g id="dnaHelix"></g>
+<circle id="geneRing" cx="230" cy="108" r="34" fill="none" stroke-width="2.4" stroke-dasharray="4 4" opacity="0.85"/>
+<text id="geneLabelText" x="86" y="60" font-family="'Inter',sans-serif" font-weight="700" font-size="12" fill="#5b3d7d"></text>
+
+<path id="mrnaTail" d="M0,0" fill="none" stroke="#A8CD6A" stroke-width="3.2" stroke-linecap="round" style="opacity:0"/>
+<g id="riboChain"></g>
+<g id="fusionFx"></g>
+
+<g id="marker" transform="translate(230,66)"><g id="markerInner"></g></g>
+<g id="secretedGroup"></g>
+`;
+
+// ribosome dots on ER
+(function(){
+  const g = document.getElementById('riboDots');
+  const pts = [
+    [110,232],[140,229],[172,228],[204,230],[236,235],[268,234],[298,236],[328,233],
+    [100,266],[132,262],[164,261],[196,264],[228,268],[260,266],[292,269],[322,265],
+    [96,300],[128,297],[160,295],[192,298],[224,302],[256,300],[288,303],[318,299],
+    [100,334],[132,330],[164,329],[196,332],[228,336],[260,334],[292,337],[318,333],
+    [110,368],[142,364],[174,363],[206,366],[238,370],[270,368],[300,371],[326,367],
+    [124,400],[156,396],[188,395],[220,398],[252,402],[280,399],[306,401]
+  ];
+  let html=''; pts.forEach(p=>{ html += `<circle cx="${p[0]}" cy="${p[1]}" r="3.6"/>`; });
+  g.innerHTML = html;
+})();
+
+// DNA double helix generator
+(function(){
+  const g = document.getElementById('dnaHelix');
+  const cx=GENE_POINT.x, cyTop=TAIL_START.y, height=86, halfW=15, turns=2.4, steps=48;
+  let s1=[], s2=[];
+  for(let i=0;i<=steps;i++){
+    const t = i/steps;
+    const y = cyTop + t*height;
+    const phase = t*turns*Math.PI*2;
+    s1.push([cx+Math.sin(phase)*halfW, y]);
+    s2.push([cx+Math.sin(phase+Math.PI)*halfW, y]);
+  }
+  const d1 = 'M'+s1.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+  const d2 = 'M'+s2.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+  let rungs='';
+  for(let i=2;i<=steps-2;i+=4){
+    rungs += `<line x1="${s1[i][0].toFixed(1)}" y1="${s1[i][1].toFixed(1)}" x2="${s2[i][0].toFixed(1)}" y2="${s2[i][1].toFixed(1)}" stroke="#C9BEE8" stroke-width="1.6" opacity="0.85"/>`;
+  }
+  g.innerHTML = `<path d="${d1}" stroke="#4C6EF5" stroke-width="3" fill="none" stroke-linecap="round"/>
+                 <path d="${d2}" stroke="#E8734A" stroke-width="3" fill="none" stroke-linecap="round"/>
+                 ${rungs}`;
+})();
+
+// ---------------- marker rendering ----------------
+const markerEl = document.getElementById('marker');
+const markerInner = document.getElementById('markerInner');
+function setMarkerType(type){
+  let html='';
+  if(type==='dna'){
+    html = `<circle class="pulse-ring" r="6" fill="none" stroke="var(--gold)" stroke-width="2.4"/><circle r="5" fill="var(--gold)"/>`;
+  } else if(type==='mrna'){
+    html = `<ellipse rx="13" ry="5.5" fill="#A8CD6A" stroke="#6E9A3E" stroke-width="2"/>`;
+  } else if(type==='protein1'){
+    html = `<circle r="10" fill="#2F9E8F" stroke="#1F6E63" stroke-width="2.2"/>`;
+  } else if(type==='protein2'){
+    html = `<circle r="10" fill="#D9587A" stroke="#A83D5B" stroke-width="2.2"/>`;
+  } else if(type==='protein2mod'){
+    html = `<circle r="10" fill="#D9587A" stroke="#A83D5B" stroke-width="2.2"/><circle cx="9" cy="-9" r="4.5" fill="#6FCF97" stroke="#3F9E63" stroke-width="1.4"/>`;
+  } else if(type==='vesicle2'){
+    html = `<circle r="17" fill="rgba(217,88,122,0.16)" stroke="#D9587A" stroke-width="2.6"/><circle r="8" fill="#D9587A"/>`;
+  } else if(type==='secreted'){
+    html='';
+  }
+  markerInner.innerHTML = html;
+}
+function setMarkerPos(x,y){ markerEl.setAttribute('transform', `translate(${x},${y})`); }
+function budInEffect(){
+  markerInner.classList.remove('bud-in'); void markerInner.getBBox && markerInner.offsetWidth;
+  markerInner.classList.add('bud-in');
+  setTimeout(()=>markerInner.classList.remove('bud-in'), 450);
+}
+function spawnSecreted(){
+  const g = document.getElementById('secretedGroup');
+  const offsets = [[18,-6],[26,10],[10,22]];
+  let html='';
+  offsets.forEach(o=>{ html += `<circle class="secreted-dot" style="--dx:${o[0]}px;--dy:${o[1]}px" cx="${OUTSIDE_PT.x}" cy="${OUTSIDE_PT.y}" r="6" fill="#D9587A"/>`; });
+  g.innerHTML += html;
+}
+function growTail(p0,p1,duration){
+  const tail = document.getElementById('mrnaTail');
+  const len = Math.hypot(p1.x-p0.x,p1.y-p0.y);
+  tail.setAttribute('d',`M${p0.x},${p0.y} L${p1.x},${p1.y}`);
+  tail.style.opacity=1;
+  tail.setAttribute('stroke-dasharray', len);
+  tail.setAttribute('stroke-dashoffset', len);
+  const start = performance.now();
+  function frame(now){
+    const t = Math.min(1,(now-start)/duration);
+    tail.setAttribute('stroke-dashoffset', len*(1-t));
+    if(t<1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+function hideTail(){ document.getElementById('mrnaTail').style.opacity=0; }
+function pulseChain(pt, duration){
+  const g = document.getElementById('riboChain');
+  let html='';
+  for(let i=0;i<4;i++){
+    const dx = i*7;
+    html += `<circle class="chain-dot" style="animation-delay:${i*120}ms" cx="${pt.x+dx}" cy="${pt.y+(i%2?-4:4)}" r="3.4" fill="#B4432F"/>`;
+  }
+  g.innerHTML = html;
+  setTimeout(()=>{ g.innerHTML=''; }, duration+300);
+}
+function fusionFlash(pt){
+  const g = document.getElementById('fusionFx');
+  const color = pathDef().color;
+  const el = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  el.setAttribute('cx',pt.x); el.setAttribute('cy',pt.y); el.setAttribute('r','22');
+  el.setAttribute('fill','none'); el.setAttribute('stroke',color); el.setAttribute('stroke-width','3');
+  el.classList.add('fusion-pulse');
+  g.appendChild(el);
+  setTimeout(()=>el.remove(), 700);
+}
+
+// ---------------- tween engine ----------------
+function tweenAlong(points, duration, onDone){
+  if(points.length===1){ setMarkerPos(points[0].x, points[0].y); setTimeout(()=>onDone&&onDone(), duration); return; }
+  const segLens=[]; let total=0;
+  for(let i=1;i<points.length;i++){ const d=Math.hypot(points[i].x-points[i-1].x, points[i].y-points[i-1].y); segLens.push(d); total+=d; }
+  const start = performance.now();
+  function frame(now){
+    const t = Math.min(1,(now-start)/duration);
+    const dist = t*total;
+    let idx=0, acc=0;
+    while(idx<segLens.length-1 && acc+segLens[idx]<dist){ acc+=segLens[idx]; idx++; }
+    const segLen = segLens[idx]||1;
+    const segT = Math.min(1,(dist-acc)/segLen);
+    const p0=points[idx], p1=points[idx+1]||points[idx];
+    setMarkerPos(p0.x+(p1.x-p0.x)*segT, p0.y+(p1.y-p0.y)*segT);
+    if(t<1){ requestAnimationFrame(frame); } else { onDone && onDone(); }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---------------- state / controls ----------------
+let currentPath = 'p1';
+let stageIndex = 0;
+let playing = false;
+let animating = false;
+
+const capDot = document.getElementById('capDot');
+const capText = document.getElementById('capText');
+const stepsList = document.getElementById('stepsList');
+const descBox = document.getElementById('descBox');
+const panelTitle = document.getElementById('panelTitle');
+const btnPlay = document.getElementById('btnPlay');
+const btnNext = document.getElementById('btnNext');
+const btnPrev = document.getElementById('btnPrev');
+const btnReset = document.getElementById('btnReset');
+const geneLabelText = document.getElementById('geneLabelText');
+const geneRing = document.getElementById('geneRing');
+
+function pathDef(){ return PATHS[currentPath]; }
+
+function renderSteps(){
+  const def = pathDef();
+  panelTitle.textContent = (currentPath==='p1'?'경로 1':'경로 2') + ' 단계';
+  stepsList.innerHTML = def.stages.map((s,i)=>`
+    <div class="step-item ${i===stageIndex?'active':(i<stageIndex?'done':'')}" data-i="${i}">
+      <span class="snum">${i+1}</span><span class="stxt">${s.label}</span>
+    </div>`).join('');
+  stepsList.querySelectorAll('.step-item').forEach(el=>{
+    el.addEventListener('click', ()=>jumpToStage(parseInt(el.dataset.i,10)));
+  });
+}
+
+function updateCaption(){
+  const def = pathDef();
+  const s = def.stages[stageIndex];
+  capText.textContent = `${stageIndex+1}/${def.stages.length} · ${s.label}`;
+  capDot.style.background = def.color;
+  descBox.textContent = s.desc;
+  geneLabelText.textContent = def.geneLabel;
+  geneRing.setAttribute('stroke', def.color);
+}
+
+function snapToStageStart(i){
+  const def = pathDef();
+  const s = def.stages[i];
+  hideTail();
+  document.getElementById('riboChain').innerHTML='';
+  document.getElementById('fusionFx').innerHTML='';
+  setMarkerType(s.type);
+  setMarkerPos(s.points[0].x, s.points[0].y);
+}
+
+function jumpToStage(i){
+  if(animating) return;
+  const def = pathDef();
+  stageIndex = Math.max(0, Math.min(def.stages.length-1, i));
+  const s = def.stages[stageIndex];
+  hideTail();
+  document.getElementById('riboChain').innerHTML='';
+  document.getElementById('fusionFx').innerHTML='';
+  document.getElementById('secretedGroup').innerHTML='';
+  setMarkerType(s.typeAfter || s.type);
+  const last = s.points[s.points.length-1];
+  setMarkerPos(last.x, last.y);
+  if(s.typeAfter==='secreted'){ spawnSecreted(); }
+  renderSteps();
+  updateCaption();
+}
+
+function playStage(i, onDone){
+  const def = pathDef();
+  if(i<0 || i>=def.stages.length){ onDone&&onDone(); return; }
+  const s = def.stages[i];
+  animating = true;
+  setMarkerType(s.type);
+  if(s.onStart) s.onStart();
+  if(s.budIn) budInEffect();
+  const total = s.points.reduce((sum,p,idx)=> idx===0?0:sum+Math.hypot(p.x-s.points[idx-1].x,p.y-s.points[idx-1].y),0);
+  const duration = s.points.length===1 ? 700 : Math.max(650, Math.min(2200, total*6));
+  tweenAlong(s.points, duration, ()=>{
+    if(s.typeAfter){ setMarkerType(s.typeAfter); if(s.typeAfter==='secreted'){ spawnSecreted(); } }
+    animating = false;
+    onDone && onDone();
+  });
+}
+
+function advance(){
+  const def = pathDef();
+  if(stageIndex >= def.stages.length-1){ playing=false; btnPlay.textContent='▶ 재생'; return; }
+  playStage(stageIndex, ()=>{
+    stageIndex++;
+    renderSteps(); updateCaption();
+    if(playing){ setTimeout(()=>{ if(playing) advance(); }, 700); }
+  });
+  renderSteps();
+}
+
+btnPlay.addEventListener('click', ()=>{
+  if(animating) return;
+  const def = pathDef();
+  if(stageIndex >= def.stages.length-1 && !playing){ jumpToStage(0); }
+  playing = !playing;
+  btnPlay.textContent = playing ? '❚❚ 일시정지' : '▶ 재생';
+  if(playing) advance();
+});
+btnNext.addEventListener('click', ()=>{
+  if(animating) return;
+  playing = false; btnPlay.textContent='▶ 재생';
+  const def = pathDef();
+  if(stageIndex >= def.stages.length-1) return;
+  playStage(stageIndex, ()=>{ stageIndex++; renderSteps(); updateCaption(); });
+  renderSteps();
+});
+btnPrev.addEventListener('click', ()=>{
+  if(animating) return;
+  playing = false; btnPlay.textContent='▶ 재생';
+  if(stageIndex<=0) return;
+  jumpToStage(stageIndex-1);
+});
+btnReset.addEventListener('click', ()=>{
+  playing = false; btnPlay.textContent='▶ 재생';
+  jumpToStage(0);
+});
+
+document.getElementById('tabP1').addEventListener('click', ()=>switchPath('p1'));
+document.getElementById('tabP2').addEventListener('click', ()=>switchPath('p2'));
+
+function switchPath(p){
+  if(animating) return;
+  currentPath = p;
+  playing = false; btnPlay.textContent='▶ 재생';
+  document.getElementById('tabP1').classList.toggle('active', p==='p1');
+  document.getElementById('tabP2').classList.toggle('active', p==='p2');
+  document.getElementById('secretedGroup').innerHTML='';
+  stageIndex = 0;
+  snapToStageStart(0);
+  renderSteps();
+  updateCaption();
+}
+
+switchPath('p1');
+})();
+</script>
+</body>
+</html>

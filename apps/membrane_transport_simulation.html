@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세포막을 통한 물질 수송 — 투과성·수송단백질·수동수송·능동수송 시뮬레이션</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05080f; --panel:#0d1420; --panel-2:#101a29; --line: rgba(148,178,214,0.14);
+    --text:#e6edf7; --text-dim:#8a99b3;
+    --head:#5eead4; --tail:#f6b551;
+    --gold:#D9A441;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:radial-gradient(ellipse 90% 60% at 50% -10%, rgba(94,234,212,0.08), transparent), var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; padding:30px 20px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  .eyebrow{font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--head); display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+  .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--head); box-shadow:0 0 8px var(--head);}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:clamp(26px,3.6vw,38px); margin:0 0 10px;}
+  .sub{color:var(--text-dim); font-size:15px; max-width:700px; line-height:1.65; margin:0 0 26px;}
+
+  .tabs{display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;}
+  .tab{
+    flex:1; min-width:150px; background:var(--panel); border:2px solid var(--line); border-radius:12px;
+    padding:13px 14px; cursor:pointer; text-align:left; transition:.15s;
+  }
+  .tab .t-no{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-dim); margin-bottom:4px;}
+  .tab .t-name{font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:600;}
+  .tab.active{border-color:var(--tab-c,var(--head)); background:linear-gradient(180deg,rgba(94,234,212,0.08),transparent);}
+
+  .stage-wrap{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(260px,0.8fr); gap:20px;}
+  @media (max-width:900px){ .stage-wrap{grid-template-columns:1fr;} }
+
+  .canvas-card{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:14px;}
+  canvas#cv{width:100%; height:auto; display:block; border-radius:10px; background:radial-gradient(circle at 50% 30%, #0a1220 0%, #05080f 80%);}
+  .state-bar{
+    margin-top:10px; padding:9px 14px; border-radius:9px; background:var(--panel-2);
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; display:flex; align-items:center; gap:10px;
+  }
+  .state-bar .dot{width:8px;height:8px;border-radius:50%; background:var(--head); flex:none;}
+  .controls{margin-top:12px; display:flex; flex-direction:column; gap:10px;}
+  .ctrl-row label{display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; margin-bottom:6px;}
+  .ctrl-row label b{color:var(--text); font-weight:600;}
+  input[type=range]{width:100%; accent-color:var(--head); height:4px;}
+  .btn-row{display:flex; gap:8px; margin-top:12px;}
+  button.act{
+    flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-weight:600; font-size:13px; padding:10px 8px; border-radius:9px; cursor:pointer;
+  }
+  button.act:hover{border-color:var(--head); color:var(--head);}
+  button.act.primary{background:var(--head); color:#04231d; border-color:var(--head);}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:10px 12px;}
+  .toggle-row .t-label{font-size:13px;}
+  .switch{position:relative; width:38px; height:21px; flex:none;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider-toggle{position:absolute; inset:0; background:#26324a; border-radius:20px; cursor:pointer; transition:.2s;}
+  .slider-toggle::before{content:""; position:absolute; width:15px; height:15px; left:3px; top:3px; background:#dbe6f5; border-radius:50%; transition:.2s;}
+  .switch input:checked + .slider-toggle{background:var(--gold);}
+  .switch input:checked + .slider-toggle::before{transform:translateX(17px); background:#04231d;}
+
+  .pill-row{display:flex; flex-wrap:wrap; gap:7px;}
+  .pill{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:8px 12px; border-radius:20px;
+    background:var(--panel-2); border:1.5px solid var(--line); color:var(--text-dim); cursor:pointer; transition:.15s;
+    display:flex; align-items:center; gap:6px;
+  }
+  .pill .sw{width:9px;height:9px;border-radius:50%; flex:none;}
+  .pill.active{color:var(--text); border-color:var(--pill-c,var(--head)); background:rgba(255,255,255,0.04);}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:20px; display:flex; flex-direction:column; gap:14px;}
+  .panel h4{font-family:'Space Grotesk',sans-serif; font-size:15.5px; margin:0;}
+  .desc-box{background:var(--panel-2); border-radius:10px; padding:13px 14px; font-size:13px; line-height:1.7; color:var(--text);}
+  .desc-box b{color:var(--head);}
+  .legend{display:flex; flex-direction:column; gap:8px; font-size:12.5px; color:var(--text-dim);}
+  .legend .row{display:flex; align-items:center; gap:9px;}
+  .legend .sw{width:14px;height:14px;border-radius:50%; flex:none;}
+
+  .compare{margin-top:24px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 24px;}
+  .compare h3{font-family:'Space Grotesk',sans-serif; font-size:18px; margin:0 0 14px;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--line);}
+  th{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-dim); text-transform:uppercase;}
+  footer{margin-top:26px; font-size:11.5px; color:var(--text-dim); line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">세포 · 세포막의 구조와 물질 수송</div>
+  <h1>세포막을 통한 물질 수송</h1>
+  <p class="sub">막의 투과성부터 수송단백질의 종류, 수동수송과 능동수송까지 — 네 단계로 나누어 직접 조작하며 이해해보세요.</p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="stage-wrap">
+    <div class="canvas-card">
+      <canvas id="cv" width="700" height="430"></canvas>
+      <div class="state-bar"><span class="dot" id="stateDot"></span><span id="stateText">탭을 선택하고 재생을 눌러보세요</span></div>
+    </div>
+    <div class="panel">
+      <h4 id="panelTitle"></h4>
+      <div class="desc-box" id="descBox"></div>
+      <div class="legend" id="legendBox"></div>
+      <div class="controls" id="controlsBox"></div>
+      <div class="btn-row">
+        <button class="act primary" id="btnPlay">▶ 재생</button>
+        <button class="act" id="btnReset">초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <h3>네 가지 학습 요소 한눈에 보기</h3>
+    <table>
+      <thead><tr><th>구분</th><th>이동 방향</th><th>막단백질 필요</th><th>ATP 필요</th><th>예시</th></tr></thead>
+      <tbody>
+        <tr><td>① 막의 투과성</td><td>—</td><td>물질에 따라 다름</td><td>—</td><td>소수성·작은친수성: 불필요 / 큰친수성·이온: 필요</td></tr>
+        <tr><td>② 수송단백질의 종류</td><td>—</td><td>통로(열린·작동성) · 운반체</td><td>—</td><td>이온 통로, 포도당 운반체</td></tr>
+        <tr><td>③ 수동수송</td><td>고농도 → 저농도</td><td>단순확산✗ / 촉진확산○</td><td>불필요</td><td>O₂(단순), 포도당(촉진)</td></tr>
+        <tr><td>④ 능동수송</td><td>저농도 → 고농도(역방향)</td><td>필요 (펌프)</td><td>필요</td><td>Na⁺–K⁺ 펌프</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>이 시뮬레이션은 세포막 물질 수송의 원리를 직관적으로 보여주기 위한 단순화된 교육용 모델입니다(실제 분자동역학 계산이 아닙니다).</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const MEM_X = 350, MEM_HALF = 7;
+const CH_TOP = 30, CH_BOT = 400, CH_LEFT = 30, CH_RIGHT = 670;
+
+function rand(a,b){ return a + Math.random()*(b-a); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+// ---------- shared bilayer drawing (full-width, vertical strip at MEM_X) ----------
+function drawBilayerAt(memX, top, bot){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(94,234,212,0.15)';
+  ctx.lineWidth = 1;
+  const step = 22;
+  for(let y = top+10; y < bot; y += step){
+    ctx.beginPath(); ctx.arc(memX-MEM_HALF-3, y, 3.2, 0, Math.PI*2);
+    ctx.fillStyle = '#5eead4'; ctx.fill();
+    ctx.strokeStyle = '#f6b551'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(memX-MEM_HALF-3, y); ctx.lineTo(memX-1, y-3.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(memX-MEM_HALF-3, y); ctx.lineTo(memX-1, y+3.5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(memX+MEM_HALF+3, y, 3.2, 0, Math.PI*2);
+    ctx.fillStyle = '#5eead4'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(memX+MEM_HALF+3, y); ctx.lineTo(memX+1, y-3.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(memX+MEM_HALF+3, y); ctx.lineTo(memX+1, y+3.5); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawBilayer(){ drawBilayerAt(MEM_X, CH_TOP, CH_BOT); }
+
+function drawParticle(p, color, r, shape){
+  ctx.save();
+  ctx.shadowColor = color; ctx.shadowBlur = 6;
+  ctx.fillStyle = color;
+  if(shape==='hex'){
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const a = Math.PI/3*i;
+      const px = p.x+Math.cos(a)*r, py = p.y+Math.sin(a)*r;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+  } else if(shape==='star'){
+    ctx.beginPath();
+    for(let i=0;i<10;i++){
+      const a = Math.PI/5*i - Math.PI/2;
+      const rr = i%2===0 ? r : r*0.45;
+      const px = p.x+Math.cos(a)*rr, py = p.y+Math.sin(a)*rr;
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.fill();
+  } else {
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawNucleotide(x,y,label,pCount){
+  ctx.save();
+  ctx.shadowColor='#F5C842'; ctx.shadowBlur=5;
+  ctx.strokeStyle='rgba(245,200,66,0.65)'; ctx.lineWidth=1.8;
+  if(pCount>0){ ctx.beginPath(); ctx.moveTo(x+5,y); ctx.lineTo(x+9+(pCount-1)*8,y); ctx.stroke(); }
+  ctx.fillStyle = '#F5C842';
+  ctx.beginPath(); ctx.arc(x,y,6.4,0,Math.PI*2); ctx.fill();
+  for(let i=0;i<pCount;i++){
+    ctx.beginPath(); ctx.arc(x+9+i*8,y,3.8,0,Math.PI*2); ctx.fill();
+  }
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#e6edf7'; ctx.font='9px JetBrains Mono, monospace'; ctx.textAlign='center';
+  ctx.fillText(label, x, y+19);
+  ctx.restore();
+}
+
+function labelSidesAt(memLeft, memRight, y, leftText, rightText){
+  ctx.save();
+  ctx.font = '11px JetBrains Mono, monospace';
+  ctx.fillStyle = 'rgba(230,237,247,0.55)';
+  ctx.fillText(leftText, memLeft, y);
+  ctx.textAlign = 'right';
+  ctx.fillText(rightText, memRight, y);
+  ctx.restore();
+}
+function labelSides(l,r){ labelSidesAt(CH_LEFT+8, CH_RIGHT-8, CH_TOP+16, l, r); }
+
+function drawGateArrow(x1,y1,x2,y2,color,ok){
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 5;
+  ctx.shadowColor = color; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang = Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-12*Math.cos(ang-0.4), y2-12*Math.sin(ang-0.4));
+  ctx.lineTo(x2-12*Math.cos(ang+0.4), y2-12*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill();
+  if(!ok){
+    ctx.strokeStyle='#e63946'; ctx.lineWidth=4; ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.moveTo(x2-9,y2-9); ctx.lineTo(x2+9,y2+9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2-9,y2+9); ctx.lineTo(x2+9,y2-9); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ================= PANEL 1: 막의 투과성 =================
+const CATS = [
+  { id:'hydro',  label:'소수성 분자',      examples:'O₂, CO₂, N₂, 스테로이드호르몬', color:'#FFD166', passes:true,
+    note:'지질 이중층 자체가 소수성이므로, 소수성 분자는 아무 도움 없이 가장 쉽게 직접 통과해요.' },
+  { id:'smallP', label:'작은 친수성 분자', examples:'H₂O, 에탄올, 글리세롤',        color:'#4C6EF5', passes:true,
+    note:'친수성이지만 크기가 아주 작아서, 느리긴 해도 이중층 사이를 비집고 직접 통과할 수 있어요.' },
+  { id:'largeP', label:'큰 친수성 분자',   examples:'포도당, 아미노산',            color:'#5eead4', passes:false,
+    note:'친수성인데다 크기도 커서 소수성인 지질 이중층 내부를 지나갈 수 없어요. 반드시 운반체 단백질이 필요해요.' },
+  { id:'ion',    label:'이온',            examples:'Na⁺, K⁺, Cl⁻',               color:'#6FCF97', passes:false,
+    note:'전하를 띠기 때문에(수화 껍질도 있음) 소수성 이중층을 절대 직접 통과하지 못해요. 반드시 통로 단백질이 필요해요.' }
+];
+const P1 = {
+  name:'막의 투과성', particles:[], sel:'hydro',
+  get cat(){ return CATS.find(c=>c.id===this.sel); },
+  get desc(){ return `<b>${this.cat.label}</b> (${this.cat.examples})<br>${this.cat.note}`; },
+  get legend(){ return CATS.map(c=>[c.color, c.label + (c.passes?' — 직접 통과':' — 통과 불가')]); },
+  init(){
+    this.particles = [];
+    for(let i=0;i<12;i++){
+      this.particles.push({ x:rand(CH_LEFT+10,MEM_X-16), y:rand(CH_TOP+14,CH_BOT-14), vx:rand(0.6,1.4), vy:rand(-0.5,0.5) });
+    }
+  },
+  step(){
+    const passes = this.cat.passes;
+    for(const p of this.particles){
+      p.vy += rand(-0.25,0.25); p.vy = clamp(p.vy,-1.2,1.2);
+      p.x += p.vx; p.y += p.vy;
+      if(p.y < CH_TOP+10){ p.y = CH_TOP+10; p.vy *= -1; }
+      if(p.y > CH_BOT-10){ p.y = CH_BOT-10; p.vy *= -1; }
+      if(passes){
+        if(p.x > CH_RIGHT-10){ p.x = CH_LEFT+10; p.y = rand(CH_TOP+14,CH_BOT-14); }
+      } else {
+        if(p.x > MEM_X-9){ p.x = MEM_X-9; p.vx = -Math.abs(p.vx); }
+        if(p.x < CH_LEFT+10){ p.x = CH_LEFT+10; p.vx = Math.abs(rand(0.6,1.4)); }
+      }
+    }
+  },
+  draw(){
+    drawBilayer();
+    const c = this.cat;
+    drawGateArrow(120, (CH_TOP+CH_BOT)/2, MEM_X+80, (CH_TOP+CH_BOT)/2, c.color, c.passes);
+    labelSides('세포 바깥', '세포 안');
+    for(const p of this.particles) drawParticle(p, c.color, 5);
+    return c.passes
+      ? `${c.label} — 직접 통과 ✓ (도움 없이 인지질 이중층을 그대로 통과해요)`
+      : `${c.label} — 통과 불가 ✕ (막단백질의 도움이 반드시 필요해요)`;
+  },
+  controls(box){
+    box.innerHTML = `<div class="pill-row" id="p1pills"></div>`;
+    const pr = document.getElementById('p1pills');
+    CATS.forEach(c=>{
+      const el = document.createElement('div');
+      el.className = 'pill' + (c.id===this.sel?' active':'');
+      el.style.setProperty('--pill-c', c.color);
+      el.innerHTML = `<span class="sw" style="background:${c.color}"></span>${c.label}`;
+      el.addEventListener('click', ()=>{ this.sel=c.id; this.init(); switchPanel(activeIdx); });
+      pr.appendChild(el);
+    });
+  }
+};
+
+// ================= PANEL 2: 수송단백질의 종류 =================
+const P2 = {
+  name:'수송단백질의 종류',
+  focus:'open',
+  types:[
+    {id:'open',  label:'열린 채널',   color:'#3E8E68', note:'항상 열려있는 통로예요. 이온처럼 작은 친수성 물질이 농도 기울기를 따라 아무 때나 자유롭게 오갈 수 있어요.'},
+    {id:'gated', label:'작동성 채널', color:'#2E86C1', note:'평소에는 닫혀 있다가, 특정 신호(리간드 결합 등)를 받아야만 잠깐 열려서 물질을 통과시켜요.'},
+    {id:'carrier', label:'운반체',   color:'#E07A3F', note:'물질과 결합한 뒤 입체 구조(모양)가 바뀌면서 반대쪽으로 옮겨 놓아요. 한 번에 한정된 수만 이동시킬 수 있어요.'}
+  ],
+  get desc(){ const t=this.types.find(t=>t.id===this.focus); return `<b>${t.label}</b><br>${t.note}`; },
+  legend:[['#3E8E68','열린 채널'],['#2E86C1','작동성 채널'],['#E07A3F','운반체'],['#C9A6FF','이동하는 물질']],
+  lanes:[],
+  init(){
+    const ys = [ (CH_TOP+ (CH_BOT-CH_TOP)*0.22), (CH_TOP+(CH_BOT-CH_TOP)*0.52), (CH_TOP+(CH_BOT-CH_TOP)*0.82) ];
+    this.lanes = [
+      { type:'open',    y:ys[0], particle:{x:CH_LEFT+30,y:ys[0],dir:1} },
+      { type:'gated',   y:ys[1], open:false, timer:60, ligand:null, particle:null },
+      { type:'carrier', y:ys[2], state:'idle', frames:0, notchT:0, particle:{x:CH_LEFT+30,y:ys[2]} }
+    ];
+  },
+  step(){
+    // lane 1: open channel — particle drifts back and forth freely
+    const l0 = this.lanes[0];
+    l0.particle.x += l0.particle.dir*1.6;
+    if(l0.particle.x > CH_RIGHT-30){ l0.particle.dir=-1; }
+    if(l0.particle.x < CH_LEFT+30){ l0.particle.dir=1; }
+
+    // lane 2: gated channel — cycles closed -> ligand approaches -> opens -> particle passes -> closes
+    const l1 = this.lanes[1];
+    l1.timer--;
+    if(l1.timer<=0){
+      if(!l1.open){
+        l1.ligand = { x:MEM_X-70, y:l1.y };
+        l1.open = 'opening';
+        l1.timer = 40;
+      } else if(l1.open==='opening'){
+        l1.open = true; l1.particle = { x:MEM_X-8, y:l1.y };
+        l1.timer = 40;
+      } else if(l1.open===true){
+        l1.open=false; l1.ligand=null; l1.particle=null;
+        l1.timer = 70;
+      }
+    }
+    if(l1.open==='opening' && l1.ligand){ l1.ligand.x += (MEM_X-16 - l1.ligand.x)*0.12; }
+    if(l1.open===true && l1.particle){ l1.particle.x += 2.2; }
+
+    // lane 3: carrier — outward-open binds, flips to inward-open, releases, resets
+    const l2 = this.lanes[2];
+    if(l2.state==='idle'){
+      l2.particle.x += (MEM_X-16 - l2.particle.x)*0.05;
+      if(Math.abs(l2.particle.x-(MEM_X-16))<2){ l2.state='flip'; l2.frames=0; }
+    } else if(l2.state==='flip'){
+      l2.frames++;
+      const t = clamp(l2.frames/50,0,1);
+      l2.notchT = t;
+      const ease = t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+      l2.particle.x = (MEM_X-16) + ((MEM_X+16)-(MEM_X-16))*ease;
+      if(t>=1){ l2.state='release'; l2.frames=0; }
+    } else if(l2.state==='release'){
+      l2.frames++;
+      l2.particle.x += 1.8;
+      if(l2.frames>26){ l2.state='reset'; l2.frames=0; }
+    } else if(l2.state==='reset'){
+      l2.frames++;
+      if(l2.frames>18){ l2.notchT=0; l2.particle.x=CH_LEFT+30; l2.state='idle'; }
+    }
+  },
+  draw(){
+    drawBilayer();
+    labelSides('세포 바깥', '세포 안');
+    for(const lane of this.lanes){
+      const dim = lane.type!==this.focus ? 0.35 : 1;
+      ctx.save(); ctx.globalAlpha = dim;
+      if(lane.type==='open'){
+        ctx.fillStyle='#3E8E68'; ctx.strokeStyle='#1F6E63'; ctx.lineWidth=2;
+        ctx.strokeRect(MEM_X-11, lane.y-9, 22, 18);
+        ctx.fillStyle='rgba(94,234,212,0.18)'; ctx.fillRect(MEM_X-9, lane.y-9, 18, 18);
+        drawParticle(lane.particle, '#C9A6FF', 4);
+      } else if(lane.type==='gated'){
+        const openAmt = lane.open===true ? 1 : (lane.open==='opening' ? 0.4 : 0);
+        const doorColor = openAmt<0.5 ? '#1c3a52' : '#2E86C1';
+        ctx.fillStyle=doorColor; ctx.strokeStyle='#164a68'; ctx.lineWidth=2;
+        const openOffset=8, leafH=9;
+        const topEdge = lane.y - openOffset*openAmt, bottomEdge = lane.y + openOffset*openAmt;
+        ctx.strokeRect(MEM_X-11, lane.y-9-openOffset, 22, 18+openOffset*2);
+        ctx.fillRect(MEM_X-11, topEdge-leafH, 22, leafH); ctx.strokeRect(MEM_X-11, topEdge-leafH, 22, leafH);
+        ctx.fillRect(MEM_X-11, bottomEdge, 22, leafH); ctx.strokeRect(MEM_X-11, bottomEdge, 22, leafH);
+        if(openAmt>0.5){ ctx.fillStyle='rgba(94,234,212,0.18)'; ctx.fillRect(MEM_X-9, topEdge, 18, bottomEdge-topEdge); }
+        if(lane.ligand) drawParticle(lane.ligand, '#2E86C1', 4.5, 'star');
+        if(lane.particle) drawParticle(lane.particle, '#C9A6FF', 4);
+      } else {
+        ctx.fillStyle='#E07A3F'; ctx.strokeStyle='#8a4419'; ctx.lineWidth=2;
+        ctx.beginPath();
+        if(ctx.roundRect) ctx.roundRect(MEM_X-13, lane.y-16, 26, 32, 8); else ctx.rect(MEM_X-13, lane.y-16, 26, 32);
+        ctx.fill(); ctx.stroke();
+        const notchX = MEM_X + (-9 + 18*(lane.notchT||0));
+        ctx.fillStyle='#0d1420';
+        ctx.beginPath(); ctx.arc(notchX, lane.y, 6, 0, Math.PI*2); ctx.fill();
+        drawParticle(lane.particle, '#C9A6FF', 4);
+      }
+      ctx.restore();
+    }
+    return `열린 채널·작동성 채널·운반체가 동시에 작동하는 모습을 비교해보세요. 아래에서 하나를 골라 자세히 볼 수 있어요.`;
+  },
+  controls(box){
+    box.innerHTML = `<div class="pill-row" id="p2pills"></div>`;
+    const pr = document.getElementById('p2pills');
+    this.types.forEach(t=>{
+      const el = document.createElement('div');
+      el.className = 'pill' + (t.id===this.focus?' active':'');
+      el.style.setProperty('--pill-c', t.color);
+      el.innerHTML = `<span class="sw" style="background:${t.color}"></span>${t.label}`;
+      el.addEventListener('click', ()=>{ this.focus=t.id; document.getElementById('descBox').innerHTML=this.desc; this.controls(box); });
+      pr.appendChild(el);
+    });
+  }
+};
+
+// ================= PANEL 3: 수동수송 (단순확산 vs 촉진확산, 나란히) =================
+const L_LEFT=30, L_MEM=190, L_RIGHT=320;
+const R_LEFT=380, R_MEM=510, R_RIGHT=670;
+const Z_TOP=60, Z_BOT=370;
+const P3 = {
+  name:'수동수송',
+  simple:[], carrier:{state:'idle', frames:0, notchT:0, particle:null},
+  facilParticles:[],
+  desc:'수동수송은 <b>단순확산</b>과 <b>촉진확산</b> 모두 포함합니다. 둘 다 에너지(ATP)가 필요 없고 고농도→저농도로 이동한다는 공통점이 있지만, 촉진확산은 반드시 막단백질(운반체)의 도움이 필요하다는 차이가 있어요.',
+  legend:[['#EF9BA8','단순확산 분자 (소수성)'],['#5eead4','촉진확산 분자 (친수성)'],['#E07A3F','운반체 단백질']],
+  init(){
+    this.simple = [];
+    for(let i=0;i<10;i++) this.simple.push({ x:rand(L_LEFT+8,L_MEM-14), y:rand(Z_TOP+10,Z_BOT-10), vx:rand(0.6,1.3), vy:rand(-0.6,0.6) });
+    this.facilParticles = [];
+    for(let i=0;i<6;i++) this.facilParticles.push({ x:rand(R_LEFT+8,R_MEM-16), y:rand(Z_TOP+10,Z_BOT-10), vx:rand(0.3,0.7), vy:rand(-0.5,0.5), bound:false });
+    this.carrier = { state:'idle', frames:0, notchT:0, particle:null };
+  },
+  step(){
+    // simple diffusion: free pass through membrane, wrap back on right edge
+    for(const p of this.simple){
+      p.vy += rand(-0.25,0.25); p.vy = clamp(p.vy,-1.2,1.2);
+      p.x += p.vx; p.y += p.vy;
+      if(p.y<Z_TOP+8){ p.y=Z_TOP+8; p.vy*=-1; }
+      if(p.y>Z_BOT-8){ p.y=Z_BOT-8; p.vy*=-1; }
+      if(p.x > L_RIGHT-8){ p.x = L_LEFT+8; p.y = rand(Z_TOP+10,Z_BOT-10); }
+    }
+    // facilitated diffusion: only the carrier can ferry a particle across
+    for(const p of this.facilParticles){
+      if(p.bound) continue;
+      p.vy += rand(-0.25,0.25); p.vy=clamp(p.vy,-1.2,1.2);
+      const nx = p.x+p.vx;
+      if((p.x-R_MEM)*(nx-R_MEM) < 0){ p.vx *= -1; }
+      p.x += p.vx; p.y += p.vy;
+      if(p.y<Z_TOP+8){ p.y=Z_TOP+8; p.vy*=-1; }
+      if(p.y>Z_BOT-8){ p.y=Z_BOT-8; p.vy*=-1; }
+      if(p.x<R_LEFT+8){ p.x=R_LEFT+8; p.vx=Math.abs(p.vx); }
+      if(p.x>R_RIGHT-8){ p.x=R_RIGHT-8; p.vx=rand(0.3,0.7); }
+    }
+    const c = this.carrier;
+    if(c.state==='idle'){
+      const cand = this.facilParticles.filter(p=>!p.bound && p.x<R_MEM && Math.abs(p.y-(Z_TOP+Z_BOT)/2)<70);
+      if(cand.length && Math.random()<0.04){
+        const p = cand[Math.floor(Math.random()*cand.length)];
+        p.bound = true; c.particle = p; c.state='transport'; c.frames=0; c.fromSide='L';
+      }
+    } else if(c.state==='transport'){
+      c.frames++;
+      const t = clamp(c.frames/55,0,1);
+      c.notchT = t;
+      const ease = t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+      c.particle.x = (R_MEM-15) + ((R_MEM+15)-(R_MEM-15))*ease;
+      c.particle.y = (Z_TOP+Z_BOT)/2;
+      if(t>=1){
+        c.particle.bound=false; c.particle.vx=rand(0.5,1); c.particle.vy=rand(-0.6,0.6);
+        c.particle=null; c.state='idle'; c.frames=0; c.notchT=0;
+      }
+    }
+  },
+  draw(){
+    drawBilayerAt(L_MEM, Z_TOP, Z_BOT);
+    drawBilayerAt(R_MEM, Z_TOP, Z_BOT);
+    // concentration gradient triangles
+    ctx.save();
+    ctx.fillStyle='rgba(239,155,168,0.85)';
+    ctx.beginPath(); ctx.moveTo(L_LEFT-6,Z_TOP+6); ctx.lineTo(L_LEFT+16,Z_TOP+6); ctx.lineTo(L_LEFT+5,Z_BOT-6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='rgba(94,234,212,0.85)';
+    ctx.beginPath(); ctx.moveTo(R_RIGHT+6,Z_BOT-6); ctx.lineTo(R_RIGHT-16,Z_BOT-6); ctx.lineTo(R_RIGHT-5,Z_TOP+6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    for(const p of this.simple) drawParticle(p, '#EF9BA8', 4.5);
+    // carrier protein in facilitated zone
+    const c = this.carrier;
+    ctx.save();
+    ctx.fillStyle='#E07A3F'; ctx.strokeStyle='#8a4419'; ctx.lineWidth=2;
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(R_MEM-13, (Z_TOP+Z_BOT)/2-16, 26, 32, 8); else ctx.rect(R_MEM-13, (Z_TOP+Z_BOT)/2-16, 26, 32);
+    ctx.fill(); ctx.stroke();
+    const notchX = R_MEM + (-9 + 18*(c.notchT||0));
+    ctx.fillStyle='#0d1420';
+    ctx.beginPath(); ctx.arc(notchX, (Z_TOP+Z_BOT)/2, 6, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    for(const p of this.facilParticles) drawParticle(p, '#5eead4', 4.5, 'star');
+
+    ctx.save();
+    ctx.font='12px JetBrains Mono, monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(230,237,247,0.7)';
+    ctx.fillText('단순확산 (E✗, 도움✗)', (L_LEFT+L_RIGHT)/2, Z_BOT+24);
+    ctx.fillText('촉진확산 (E✗, 도움○)', (R_LEFT+R_RIGHT)/2, Z_BOT+24);
+    ctx.font='10.5px JetBrains Mono, monospace'; ctx.fillStyle='rgba(230,237,247,0.45)';
+    ctx.fillText('농도 기울기', L_LEFT+30, Z_TOP-8);
+    ctx.fillText('농도 기울기', R_RIGHT-30, Z_TOP-8);
+    ctx.restore();
+
+    return `단순확산은 분자가 직접 자유롭게 이동하고, 촉진확산은 운반체가 결합·구조 변화를 거쳐야만 이동해요 — 둘 다 고농도에서 저농도로, ATP는 쓰지 않아요.`;
+  },
+  controls(box){ box.innerHTML = ''; }
+};
+
+// ================= PANEL 4: 능동수송 (Na+/K+ pump) =================
+const NA_C = '#C9A6FF', K_C = '#FFD166';
+const P4 = {
+  name:'능동수송', particles:[], atpOn:true, atp:0, pumpY:(CH_TOP+CH_BOT)/2,
+  pump:null,
+  desc:'대표적인 능동수송 단백질인 <b>나트륨-칼륨 펌프</b>의 실제 작동 순서를 그대로 재현했습니다: ① 세포 안의 Na⁺ 3개가 펌프에 결합 → ② 세포 안의 ATP가 결합하며 인산기가 분리(인산화) → ③ 구조 변화로 Na⁺ 3개가 세포 밖으로 방출되고 K⁺ 결합 부위 2곳이 나타남 → ④ 세포 밖의 K⁺ 2개가 결합 → ⑤ 인산기가 떨어져 나가며(탈인산화) 구조가 되돌아오고 K⁺ 2개가 세포 안으로 방출됩니다.',
+  legend:[['#C9A6FF','나트륨 이온 (Na⁺)'],['#FFD166','칼륨 이온 (K⁺)'],['#D9A441','나트륨-칼륨 펌프'],['#6FCF97','인산기(Pi) / ATP']],
+  init(){
+    this.particles = [];
+    for(let i=0;i<10;i++) this.particles.push({x:rand(CH_LEFT+10,MEM_X-14), y:rand(CH_TOP+10,CH_BOT-10), vx:rand(-1,1), vy:rand(-1,1), type:'na', bound:false});
+    for(let i=0;i<4;i++) this.particles.push({x:rand(MEM_X+14,CH_RIGHT-10), y:rand(CH_TOP+10,CH_BOT-10), vx:rand(-1,1), vy:rand(-1,1), type:'na', bound:false});
+    for(let i=0;i<4;i++) this.particles.push({x:rand(CH_LEFT+10,MEM_X-14), y:rand(CH_TOP+10,CH_BOT-10), vx:rand(-1,1), vy:rand(-1,1), type:'k', bound:false});
+    for(let i=0;i<10;i++) this.particles.push({x:rand(MEM_X+14,CH_RIGHT-10), y:rand(CH_TOP+10,CH_BOT-10), vx:rand(-1,1), vy:rand(-1,1), type:'k', bound:false});
+    this.atp = 0;
+    this.pump = { state:'wait_na', timer:0, boundNa:[], boundK:[], hasPi:false, transT:0, atpMol:null };
+  },
+  insidePocket(i,n){ const offs = n===3?[-14,0,14]:[-7,7]; return {x:MEM_X+15, y:this.pumpY+offs[i]}; },
+  outsidePocket(i,n){ const offs = n===3?[-14,0,14]:[-7,7]; return {x:MEM_X-15, y:this.pumpY+offs[i]}; },
+  step(){
+    const naInsideCount = this.particles.filter(p=>p.type==='na' && !p.bound && p.x>MEM_X).length;
+    const kOutsideCount = this.particles.filter(p=>p.type==='k' && !p.bound && p.x<MEM_X).length;
+    for(const p of this.particles){
+      if(p.bound) continue;
+      p.vx += rand(-0.4,0.4); p.vy += rand(-0.4,0.4);
+      p.vx = clamp(p.vx,-2,2); p.vy = clamp(p.vy,-2,2);
+      const nx = p.x+p.vx;
+      if((p.x-MEM_X)*(nx-MEM_X) < 0){
+        // replenishing leak: boosted when the pump's supply pool runs low, so it never fully drains
+        let leakP = 0.012;
+        if(p.type==='na' && p.x<MEM_X && naInsideCount<6) leakP = 0.35;      // outside->inside na, refills what the pump consumes
+        else if(p.type==='k' && p.x>MEM_X && kOutsideCount<6) leakP = 0.35;  // inside->outside k, refills what the pump consumes
+        if(Math.random() < leakP){ /* tiny passive leak */ }
+        else { p.vx *= -1; }
+      }
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < CH_LEFT+6){ p.x = CH_LEFT+6; p.vx *= -1; }
+      if(p.x > CH_RIGHT-6){ p.x = CH_RIGHT-6; p.vx *= -1; }
+      if(p.y < CH_TOP+6){ p.y = CH_TOP+6; p.vy *= -1; }
+      if(p.y > CH_BOT-6){ p.y = CH_BOT-6; p.vy *= -1; }
+    }
+    const pu = this.pump;
+    if(pu.state==='wait_na'){
+      if(pu.boundNa.length<3){
+        const cand = this.particles.filter(p=>p.type==='na' && !p.bound && p.x>MEM_X && Math.abs(p.y-this.pumpY)<80);
+        if(cand.length && Math.random()<0.1){
+          const p = cand[Math.floor(Math.random()*cand.length)];
+          p.bound = true; p.seek = true; p.slot = pu.boundNa.length;
+          pu.boundNa.push(p);
+        }
+      }
+      for(const p of pu.boundNa){
+        const tgt = this.insidePocket(p.slot,3);
+        p.x += (tgt.x-p.x)*0.18; p.y += (tgt.y-p.y)*0.18;
+      }
+      if(pu.boundNa.length===3) { pu.state='atp_bind'; pu.timer=0; pu.atpMol={x:MEM_X+62,y:this.pumpY+rand(-16,16)}; }
+    }
+    else if(pu.state==='atp_bind'){
+      if(this.atpOn){
+        pu.timer++;
+        if(pu.atpMol){
+          const dockX = MEM_X+18, dockY = this.pumpY-24;
+          pu.atpMol.x += (dockX-pu.atpMol.x)*0.16;
+          pu.atpMol.y += (dockY-pu.atpMol.y)*0.16;
+        }
+        if(pu.timer>18){ pu.state='phosphorylate'; pu.timer=0; }
+      }
+    }
+    else if(pu.state==='phosphorylate'){
+      pu.timer++;
+      if(pu.atpMol){ pu.atpMol.x += 0.9; pu.atpMol.y -= 0.7; }
+      if(pu.timer>12){ pu.hasPi=true; this.atp++; pu.state='release_na'; pu.transT=0; pu.atpMol=null; }
+    }
+    else if(pu.state==='release_na'){
+      pu.transT = clamp(pu.transT + 1/28, 0, 1);
+      const ease = pu.transT<0.5 ? 2*pu.transT*pu.transT : 1-Math.pow(-2*pu.transT+2,2)/2;
+      for(const p of pu.boundNa){
+        const a = this.insidePocket(p.slot,3), b = this.outsidePocket(p.slot,3);
+        p.x = a.x+(b.x-a.x)*ease; p.y = a.y+(b.y-a.y)*ease;
+      }
+      if(pu.transT>=1){
+        for(const p of pu.boundNa){ p.bound=false; p.vx=rand(-1.6,-0.9); p.vy=rand(-0.6,0.6); }
+        pu.boundNa=[]; pu.state='wait_k'; pu.timer=0;
+      }
+    }
+    else if(pu.state==='wait_k'){
+      if(pu.boundK.length<2){
+        const cand = this.particles.filter(p=>p.type==='k' && !p.bound && p.x<MEM_X && Math.abs(p.y-this.pumpY)<80);
+        if(cand.length && Math.random()<0.1){
+          const p = cand[Math.floor(Math.random()*cand.length)];
+          p.bound = true; p.slot = pu.boundK.length;
+          pu.boundK.push(p);
+        }
+      }
+      for(const p of pu.boundK){
+        const tgt = this.outsidePocket(p.slot,2);
+        p.x += (tgt.x-p.x)*0.18; p.y += (tgt.y-p.y)*0.18;
+      }
+      if(pu.boundK.length===2){ pu.state='dephosphorylate'; pu.timer=0; }
+    }
+    else if(pu.state==='dephosphorylate'){
+      pu.timer++;
+      if(pu.timer>12){ pu.hasPi=false; pu.state='release_k'; pu.transT=0; }
+    }
+    else if(pu.state==='release_k'){
+      pu.transT = clamp(pu.transT + 1/28, 0, 1);
+      const ease = pu.transT<0.5 ? 2*pu.transT*pu.transT : 1-Math.pow(-2*pu.transT+2,2)/2;
+      for(const p of pu.boundK){
+        const a = this.outsidePocket(p.slot,2), b = this.insidePocket(p.slot,2);
+        p.x = a.x+(b.x-a.x)*ease; p.y = a.y+(b.y-a.y)*ease;
+      }
+      if(pu.transT>=1){
+        for(const p of pu.boundK){ p.bound=false; p.vx=rand(0.9,1.6); p.vy=rand(-0.6,0.6); }
+        pu.boundK=[]; pu.state='wait_na'; pu.timer=0;
+      }
+    }
+  },
+  phaseLabel(){
+    const s = this.pump.state;
+    if(s==='wait_na') return `① Na⁺ 결합 대기 (${this.pump.boundNa.length}/3, 세포 안쪽)`;
+    if(s==='atp_bind') return this.atpOn ? '② ATP가 펌프에 결합 중' : '② ATP 없음 — 대기 중 (펌프 정지)';
+    if(s==='phosphorylate') return '② 인산기 분리 (ATP → ADP + Pi)';
+    if(s==='release_na') return '③ 구조 변화 → Na⁺ 3개 세포 밖으로 방출';
+    if(s==='wait_k') return `④ K⁺ 결합 대기 (${this.pump.boundK.length}/2, 세포 바깥쪽)`;
+    if(s==='dephosphorylate') return '⑤ 인산기 이탈 (탈인산화)';
+    if(s==='release_k') return '⑤ 구조 변화 → K⁺ 2개 세포 안으로 방출';
+    return '';
+  },
+  draw(){
+    drawBilayer();
+    const pu = this.pump;
+    const facingOut = (pu.state==='release_na' || pu.state==='wait_k' || pu.state==='dephosphorylate' || pu.state==='release_k');
+    ctx.save();
+    ctx.fillStyle = '#D9A441'; ctx.strokeStyle = '#8a5f1c'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(MEM_X-15, this.pumpY-34, 30, 68, 10); else ctx.rect(MEM_X-15, this.pumpY-34, 30, 68);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(13,20,32,0.9)';
+    if(!facingOut){
+      for(const off of [-14,0,14]){ ctx.beginPath(); ctx.arc(MEM_X+11, this.pumpY+off, 4.5, 0, Math.PI*2); ctx.fill(); }
+    } else {
+      for(const off of [-7,7]){ ctx.beginPath(); ctx.arc(MEM_X-11, this.pumpY+off, 4.5, 0, Math.PI*2); ctx.fill(); }
+    }
+    if(pu.hasPi){
+      ctx.fillStyle = '#6FCF97'; ctx.font='bold 9px JetBrains Mono, monospace'; ctx.textAlign='center';
+      ctx.beginPath(); ctx.arc(MEM_X, this.pumpY-42, 8, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#04231d'; ctx.fillText('Pi', MEM_X, this.pumpY-39);
+    }
+    if(pu.atpMol){
+      const isSplitting = pu.state==='phosphorylate';
+      drawNucleotide(pu.atpMol.x, pu.atpMol.y, isSplitting?'ADP':'ATP', isSplitting?2:3);
+    }
+    ctx.restore();
+    labelSides('세포 바깥', '세포 안');
+    for(const p of this.particles) drawParticle(p, p.type==='na'?NA_C:K_C, 4);
+    const na = this.particles.filter(p=>p.type==='na'), k = this.particles.filter(p=>p.type==='k');
+    const naL = na.filter(p=>p.x<MEM_X).length, naR = na.length-naL;
+    const kL = k.filter(p=>p.x<MEM_X).length, kR = k.length-kL;
+    return `Na⁺ 밖${naL}·안${naR} / K⁺ 밖${kL}·안${kR} · 소모 ATP ${this.atp}개 — ${this.phaseLabel()}`;
+  },
+  controls(box){
+    box.innerHTML = `
+      <div class="toggle-row">
+        <div class="t-label">ATP 공급</div>
+        <label class="switch"><input type="checkbox" id="p4atp" ${this.atpOn?'checked':''}><span class="slider-toggle"></span></label>
+      </div>`;
+    document.getElementById('p4atp').addEventListener('change', e=>{ this.atpOn = e.target.checked; });
+  }
+};
+
+const PANELS = [P1,P2,P3,P4];
+const TAB_COLORS = ['#FFD166','#E07A3F','#5eead4','#C9A6FF'];
+let activeIdx = 0;
+let playing = false;
+
+function activePanel(){ return PANELS[activeIdx]; }
+
+function renderTabs(){
+  const el = document.getElementById('tabs');
+  el.innerHTML = '';
+  PANELS.forEach((p,i)=>{
+    const d = document.createElement('div');
+    d.className = 'tab' + (i===activeIdx?' active':'');
+    d.style.setProperty('--tab-c', TAB_COLORS[i]);
+    d.innerHTML = `<div class="t-no">0${i+1}</div><div class="t-name">${p.name}</div>`;
+    d.addEventListener('click', ()=>switchPanel(i));
+    el.appendChild(d);
+  });
+}
+
+function switchPanel(i){
+  activeIdx = i;
+  playing = false;
+  document.getElementById('btnPlay').textContent = '▶ 재생';
+  renderTabs();
+  const p = activePanel();
+  document.getElementById('panelTitle').textContent = p.name;
+  document.getElementById('descBox').innerHTML = p.desc;
+  document.getElementById('legendBox').innerHTML = p.legend.map(([c,l])=>`<div class="row"><span class="sw" style="background:${c}"></span>${l}</div>`).join('');
+  p.controls(document.getElementById('controlsBox'));
+  p.init();
+  document.getElementById('stateDot').style.background = TAB_COLORS[i];
+  drawFrame();
+}
+
+function drawFrame(){
+  ctx.clearRect(0,0,W,H);
+  const p = activePanel();
+  const stateStr = p.draw();
+  document.getElementById('stateText').textContent = stateStr;
+}
+
+function loop(){
+  if(playing){
+    activePanel().step();
+    drawFrame();
+  }
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('btnPlay').addEventListener('click', ()=>{
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? '❚❚ 일시정지' : '▶ 재생';
+});
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  activePanel().init();
+  drawFrame();
+});
+
+switchPanel(0);
+loop();
+})();
+</script>
+</body>
+</html>

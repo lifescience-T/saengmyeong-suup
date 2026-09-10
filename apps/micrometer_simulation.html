@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세포는 얼마나 작을까? — 마이크로미터 시뮬레이션</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Sans+KR:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F2E8;
+    --paper-2:#EFEADB;
+    --ink:#16241C;
+    --ink-soft:#41544A;
+    --forest:#2F6B4F;
+    --forest-deep:#1E4633;
+    --sage:#E6EDDF;
+    --sage-line:#C9D8C2;
+    --amber:#DE9B3A;
+    --amber-deep:#B87A22;
+    --obj-black:#1B1B1B;
+    --oc-green:#2F9E63;
+    --correct:#2F6B4F;
+    --wrong:#B4472F;
+    --card:#FFFEFA;
+    --shadow: 0 10px 30px rgba(22,36,28,0.08);
+    --radius: 18px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans KR', sans-serif;
+    line-height:1.6;
+    background-image:
+      linear-gradient(var(--paper-2) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-2) 1px, transparent 1px);
+    background-size: 34px 34px;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  .display{font-family:'Song Myung', serif;}
+  h1,h2,h3{font-family:'Song Myung', serif; margin:0 0 .4em 0; font-weight:400;}
+  p{margin:0 0 1em 0;}
+  section{position:relative; padding:96px 22px; max-width:920px; margin:0 auto;}
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--forest-deep); font-weight:600;
+    background:var(--sage); border:1px solid var(--sage-line);
+    padding:6px 14px; border-radius:100px; margin-bottom:18px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--forest);}
+
+  /* nav */
+  .progress-nav{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    display:flex; justify-content:center; gap:2px;
+    padding:14px 16px; backdrop-filter:blur(8px);
+    background:rgba(245,242,232,0.86); border-bottom:1px solid var(--sage-line);
+  }
+  .progress-nav .brand{
+    position:absolute; left:20px; top:50%; transform:translateY(-50%);
+    font-family:'Song Myung',serif; font-size:16px; color:var(--forest-deep); display:none;
+  }
+  .progress-nav a{
+    text-decoration:none; color:var(--ink-soft); font-size:13px; font-weight:600;
+    padding:8px 14px; border-radius:100px; transition:all .25s ease;
+    display:flex; align-items:center; gap:7px;
+  }
+  .progress-nav a .num{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--forest); opacity:.7;}
+  .progress-nav a.active{background:var(--forest); color:#fff;}
+  .progress-nav a.active .num{color:#dff0e6; opacity:1;}
+  .progress-nav a:hover:not(.active){background:var(--sage);}
+
+  @media(min-width:760px){ .progress-nav .brand{display:block;} }
+
+  /* ---------- HERO ---------- */
+  #hero{ padding-top:150px; text-align:center; }
+  .fov-wrap{
+    width:min(78vw,340px); aspect-ratio:1/1; margin:0 auto 36px auto;
+    position:relative;
+  }
+  .fov-ring{
+    position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle at 34% 30%, #ffffff, #eef4ea 46%, #cfe0c8 78%, #9db993 100%);
+    box-shadow: inset 0 0 0 10px rgba(255,255,255,0.5), inset 0 0 40px rgba(22,36,28,0.28), var(--shadow);
+    animation: fov-in 1s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .fov-ring::after{
+    content:''; position:absolute; inset:0; border-radius:50%;
+    box-shadow: inset 0 0 0 2px rgba(22,36,28,0.18);
+  }
+  @keyframes fov-in{ from{opacity:0; transform:scale(.85);} to{opacity:1; transform:scale(1);} }
+
+  h1.hero-title{
+    font-size:clamp(30px,5.6vw,50px); color:var(--ink); margin-bottom:14px;
+  }
+  .hero-sub{ font-size:16.5px; color:var(--ink-soft); max-width:520px; margin:0 auto 30px auto;}
+  .goal-card{
+    display:inline-flex; align-items:flex-start; gap:12px; text-align:left;
+    background:var(--card); border:1px solid var(--sage-line); border-radius:var(--radius);
+    padding:18px 22px; box-shadow:var(--shadow); max-width:560px;
+  }
+  .goal-card .tag{
+    flex-shrink:0; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:12px;
+    color:#fff; background:var(--forest); padding:5px 10px; border-radius:8px; margin-top:2px;
+  }
+  .goal-card p{margin:0; font-size:15px; color:var(--ink);}
+  .scroll-cue{ margin-top:46px; font-size:12.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; letter-spacing:.06em;}
+  .scroll-cue .chev{display:block; margin:8px auto 0 auto; width:10px; height:10px; border-right:2px solid var(--forest); border-bottom:2px solid var(--forest); transform:rotate(45deg); animation:bob 1.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(45deg);}50%{transform:translateY(6px) rotate(45deg);}}
+
+  /* ---------- shared section chrome ---------- */
+  .sec-head{margin-bottom:36px;}
+  .sec-head h2{font-size:clamp(24px,4vw,32px); color:var(--ink);}
+  .sec-head .lede{color:var(--ink-soft); font-size:15.5px; max-width:640px;}
+  #lab1, #lab2{background:var(--sage);}
+  #lab1::before, #lab2::before{
+    content:''; position:absolute; inset:0 0 auto 0; height:1px; background:var(--sage-line);
+  }
+
+  .panel{
+    background:var(--card); border:1px solid var(--sage-line); border-radius:24px;
+    padding:clamp(20px,4vw,40px); box-shadow:var(--shadow);
+  }
+
+  /* slider */
+  .slider-row{ display:flex; align-items:center; gap:18px; margin-bottom:8px; flex-wrap:wrap;}
+  .slider-row label{font-weight:600; font-size:14.5px; color:var(--ink);}
+  .mag-readout{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:22px; color:var(--forest-deep);
+    background:var(--sage); border:1px solid var(--sage-line); border-radius:10px; padding:4px 12px; min-width:92px; text-align:center;
+  }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:100px;
+    background:linear-gradient(90deg, var(--forest) 0%, var(--forest) var(--fill,50%), #d9e2d3 var(--fill,50%), #d9e2d3 100%);
+    outline:none; cursor:pointer; margin:14px 0 6px 0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:24px; height:24px; border-radius:50%;
+    background:var(--card); border:4px solid var(--forest); box-shadow:0 2px 8px rgba(0,0,0,.25); cursor:grab;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:22px; height:22px; border-radius:50%; background:var(--card); border:4px solid var(--forest); cursor:grab;
+  }
+  .tick-labels{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); margin-bottom:26px;}
+
+  /* fov viewport for simulators */
+  .fov-box{
+    position:relative; border-radius:20px; overflow:hidden;
+    background:radial-gradient(circle at 50% 45%, #fbfaf5 0%, #eef4ea 55%, #c9dac0 100%);
+    box-shadow: inset 0 0 36px rgba(22,36,28,0.22);
+    margin-bottom:22px;
+  }
+  .fov-box svg{display:block; width:100%; height:auto;}
+  .legend{display:flex; gap:20px; flex-wrap:wrap; font-size:13px; color:var(--ink-soft); margin-bottom:26px;}
+  .legend span{display:inline-flex; align-items:center; gap:7px;}
+  .legend i{width:20px; height:4px; border-radius:2px; display:inline-block;}
+  .legend .lg-obj{background:var(--obj-black);}
+  .legend .lg-oc{background:var(--oc-green);}
+
+  .calc{
+    background:var(--sage); border:1px dashed var(--sage-line); border-radius:16px; padding:20px 22px;
+  }
+  .calc h3{font-family:'Noto Sans KR',sans-serif; font-weight:700; font-size:15px; color:var(--forest-deep); margin-bottom:14px;}
+  .calc-inputs{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;}
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label{font-size:12.5px; color:var(--ink-soft); font-weight:600;}
+  .field input{
+    width:118px; font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:600;
+    padding:9px 10px; border-radius:10px; border:1.5px solid var(--sage-line); background:#fff; color:var(--ink);
+  }
+  .field input:focus{outline:2px solid var(--forest); outline-offset:1px;}
+  .formula{
+    font-family:'IBM Plex Mono',monospace; font-size:14.5px; color:var(--ink);
+    background:#fff; border:1px solid var(--sage-line); border-radius:12px; padding:14px 16px;
+    line-height:1.9; overflow-x:auto;
+  }
+  .formula .result{color:var(--forest-deep); font-weight:700;}
+  .hint{font-size:13px; color:var(--ink-soft); margin-top:10px;}
+
+  /* lab2 cell slider */
+  .cell-slider-row{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:6px;}
+  .count-readout{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:20px; color:var(--forest-deep);
+  }
+
+  .carry-badge{
+    display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--forest-deep);
+    background:#fff; border:1px solid var(--sage-line); border-radius:100px; padding:6px 14px; margin-bottom:18px;
+  }
+  .carry-badge b{font-family:'IBM Plex Mono',monospace;}
+
+  /* quiz */
+  #quiz{background:var(--paper);}
+  .quiz-card{background:var(--card); border:1px solid var(--sage-line); border-radius:24px; padding:clamp(22px,4vw,40px); box-shadow:var(--shadow);}
+  .quiz-q{font-size:17px; font-weight:700; margin-bottom:22px; color:var(--ink);}
+  .quiz-options{display:grid; gap:12px; margin-bottom:20px;}
+  .opt-btn{
+    text-align:left; font-size:15px; font-family:'Noto Sans KR',sans-serif; color:var(--ink);
+    background:#fff; border:1.5px solid var(--sage-line); border-radius:14px; padding:14px 18px;
+    cursor:pointer; transition:all .18s ease; display:flex; align-items:center; gap:12px;
+  }
+  .opt-btn .letter{
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; color:var(--forest);
+    width:26px; height:26px; border-radius:50%; border:1.5px solid var(--sage-line); display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .opt-btn:hover:not(:disabled){border-color:var(--forest); transform:translateY(-1px);}
+  .opt-btn:disabled{cursor:default;}
+  .opt-btn.correct{border-color:var(--correct); background:#EAF3EC;}
+  .opt-btn.correct .letter{background:var(--correct); color:#fff; border-color:var(--correct);}
+  .opt-btn.wrong{border-color:var(--wrong); background:#FBEDE9;}
+  .opt-btn.wrong .letter{background:var(--wrong); color:#fff; border-color:var(--wrong);}
+  .opt-btn.dim{opacity:.5;}
+
+  .feedback{
+    display:none; border-radius:16px; padding:20px 22px; margin-top:6px;
+    border:1px solid var(--sage-line); background:var(--sage);
+  }
+  .feedback.show{display:block; animation:rise .35s ease both;}
+  @keyframes rise{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+  .feedback .fb-title{font-weight:700; font-size:15px; margin-bottom:8px;}
+  .feedback.correct-fb .fb-title{color:var(--correct);}
+  .feedback.wrong-fb .fb-title{color:var(--wrong);}
+  .compare-row{display:flex; gap:18px; flex-wrap:wrap; margin-top:16px;}
+  .compare-item{flex:1 1 200px; background:#fff; border:1px solid var(--sage-line); border-radius:14px; padding:12px;}
+  .compare-item .cap{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft); margin-bottom:6px; text-align:center;}
+  .compare-item svg{width:100%; height:auto; display:block;}
+
+  /* ---------- microscope comparison (04) ---------- */
+  #scope{background:var(--sage);}
+  .scope-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:26px;
+  }
+  @media(max-width:760px){ .scope-grid{grid-template-columns:1fr;} }
+  .scope-card{
+    background:var(--card); border:1px solid var(--sage-line); border-radius:20px;
+    overflow:hidden; box-shadow:var(--shadow); display:flex; flex-direction:column;
+  }
+  .scope-photo{
+    background:#0d0d0d; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    padding:14px;
+  }
+  .scope-photo img{max-width:100%; max-height:100%; object-fit:contain; border-radius:6px;}
+  .scope-photo.light-bg{background:#f3efe3;}
+  .scope-body{padding:18px 20px 22px;}
+  .scope-tag{
+    display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700;
+    letter-spacing:.04em; color:var(--forest-deep); background:var(--sage);
+    border:1px solid var(--sage-line); border-radius:100px; padding:4px 11px; margin-bottom:10px;
+  }
+  .scope-card h3{font-size:17px; margin:0 0 8px;}
+  .scope-card p{font-size:13px; color:var(--ink-soft); margin:0 0 10px; line-height:1.6;}
+  .scope-meta{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--forest-deep);
+    display:flex; flex-direction:column; gap:4px; border-top:1px dashed var(--sage-line); padding-top:10px;
+  }
+  .scope-meta b{color:var(--ink);}
+
+  .scope-table-wrap{overflow-x:auto;}
+  table.scope-table{
+    width:100%; border-collapse:collapse; background:var(--card); border-radius:16px; overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  table.scope-table th, table.scope-table td{
+    padding:12px 16px; text-align:left; border-bottom:1px solid var(--sage-line); font-size:13.5px;
+  }
+  table.scope-table th{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft);
+    background:var(--sage); font-weight:700;
+  }
+  table.scope-table td:first-child{font-weight:700; color:var(--forest-deep); white-space:nowrap;}
+  table.scope-table tr:last-child td{border-bottom:none;}
+
+  footer{ text-align:center; padding:50px 20px 70px 20px; color:var(--ink-soft); font-size:12.5px; font-family:'IBM Plex Mono',monospace;}
+
+  @media(max-width:600px){
+    section{padding:70px 16px;}
+    .progress-nav a{padding:8px 10px; font-size:12px;}
+    .progress-nav a .num{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<nav class="progress-nav">
+  <span class="brand">세포 측정 실험실</span>
+  <a href="#hero" data-sec="hero" class="active"><span class="num">00</span>인트로</a>
+  <a href="#lab1" data-sec="lab1"><span class="num">01</span>탐구1</a>
+  <a href="#lab2" data-sec="lab2"><span class="num">02</span>탐구2</a>
+  <a href="#quiz" data-sec="quiz"><span class="num">03</span>사고력</a>
+  <a href="#scope" data-sec="scope"><span class="num">04</span>전자현미경</a>
+</nav>
+
+<!-- ================= HERO ================= -->
+<section id="hero">
+  <div class="eyebrow"><span class="dot"></span>Ⅰ. 세포 · 세포의 구조와 기능</div>
+
+  <div class="fov-wrap">
+    <div class="fov-ring"></div>
+    <svg viewBox="0 0 300 300" style="position:absolute; inset:0; width:100%; height:100%;">
+      <defs>
+        <clipPath id="heroClip"><circle cx="150" cy="150" r="128"/></clipPath>
+      </defs>
+      <g clip-path="url(#heroClip)">
+        <!-- objective ticks (black) -->
+        <g id="heroObj" stroke="#1B1B1B" stroke-width="2.4"></g>
+        <!-- ocular ticks (green) -->
+        <g id="heroOc" stroke="#2F9E63" stroke-width="1.6"></g>
+      </g>
+      <circle cx="150" cy="150" r="128" fill="none" stroke="#16241C" stroke-opacity="0.15" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <h1 class="hero-title">세포는 얼마나<br>작을까?</h1>
+  <p class="hero-sub">눈으로는 절대 잴 수 없는 세포의 크기, 광학 현미경 속 두 개의 눈금자로 재어 봅니다.
+  검정 눈금(대물마이크로미터)과 초록 눈금(접안마이크로미터)이 겹치는 순간을 직접 조작하며 원리를 확인해요.</p>
+
+  <div class="goal-card">
+    <span class="tag">목표</span>
+    <p>광학 현미경을 이용하여 세포의 크기를 측정할 수 있다.</p>
+  </div>
+
+  <div class="scroll-cue">아래로 스크롤해서 탐구 시작<span class="chev"></span></div>
+</section>
+
+<!-- ================= LAB 1 ================= -->
+<section id="lab1">
+  <div class="sec-head">
+    <div class="eyebrow"><span class="dot"></span>탐구 1</div>
+    <h2>접안마이크로미터 한 눈금의 길이 구하기</h2>
+    <p class="lede">대물마이크로미터(검정)는 실제 눈금 간격이 10 μm로 고정되어 있지만, 배율이 높아질수록 현미경 속 상이 더 크게 확대되어 보여요.
+    반면 접안마이크로미터(초록)는 접안렌즈 안에 고정되어 있어 눈에 보이는 간격이 배율에 상관없이 항상 같아요.
+    배율 슬라이더를 움직여 두 눈금이 겹치는 지점을 확인해 보세요.</p>
+  </div>
+
+  <div class="panel">
+    <div class="slider-row">
+      <label for="magSlider">현미경 배율</label>
+      <span class="mag-readout"><span id="magVal">100</span>배</span>
+    </div>
+    <input type="range" id="magSlider" min="100" max="400" step="10" value="100">
+    <div class="tick-labels"><span>100배</span><span>200배</span><span>300배</span><span>400배</span></div>
+
+    <div class="fov-box">
+      <svg id="rulerSvg" viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="legend">
+      <span><i class="lg-obj"></i>대물마이크로미터 — 한 눈금 10 μm (고정)</span>
+      <span><i class="lg-oc"></i>접안마이크로미터 — 접안렌즈에 고정, 칸 수만 변화</span>
+    </div>
+
+    <div class="calc">
+      <h3>🧮 눈금 칸 수로 접안눈금 길이 계산하기</h3>
+      <div class="calc-inputs">
+        <div class="field">
+          <label>대물 눈금 칸 수</label>
+          <input type="number" id="objCount" min="1" max="50" value="10">
+        </div>
+        <div class="field">
+          <label>접안 눈금 칸 수</label>
+          <input type="number" id="ocCount" min="1" max="80" value="10">
+        </div>
+      </div>
+      <div class="formula" id="formula1"></div>
+      <p class="hint">기본값은 시뮬레이터에서 두 눈금이 겹치는 지점을 자동으로 세어 채워 둔 값이에요. 직접 숫자를 바꿔가며 공식이 어떻게 계산되는지 확인해 보세요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LAB 2 ================= -->
+<section id="lab2">
+  <div class="sec-head">
+    <div class="eyebrow"><span class="dot"></span>탐구 2</div>
+    <h2>해캄 세포의 크기 측정하기</h2>
+    <p class="lede">접안마이크로미터 눈금 위에 놓인 해캄 세포를 슬라이더로 늘려 보면서, 세포가 몇 칸을 차지하는지 세어 보세요.
+    <b>측정한 눈금 칸 수 × 접안눈금 한 칸의 길이</b>를 곱하면 세포의 실제 크기(μm)를 구할 수 있어요.</p>
+  </div>
+
+  <div class="panel">
+    <div class="carry-badge">🔗 탐구1에서 계산한 접안눈금 길이 <b id="carryVal">10 μm</b> (배율 <b id="carryMag">100</b>배 기준)를 그대로 사용해요</div>
+
+    <div class="fov-box">
+      <svg id="cellSvg" viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="cell-slider-row">
+      <label for="cellSlider" style="font-weight:600; font-size:14.5px;">해캄 세포 길이 조절</label>
+      <span class="count-readout"><span id="cellCountVal">6</span>칸</span>
+    </div>
+    <input type="range" id="cellSlider" min="2" max="30" step="1" value="6">
+    <div class="tick-labels"><span>짧게</span><span>길게</span></div>
+
+    <div class="calc">
+      <h3>🧮 세포의 실제 크기 계산하기</h3>
+      <div class="calc-inputs">
+        <div class="field">
+          <label>측정한 눈금 칸 수</label>
+          <input type="number" id="cellCountInput" min="1" max="60" value="6">
+        </div>
+        <div class="field">
+          <label>접안눈금 한 칸(μm)</label>
+          <input type="number" id="ocLenInput" min="0.1" step="0.1" value="10">
+        </div>
+      </div>
+      <div class="formula" id="formula2"></div>
+      <p class="hint">슬라이더를 움직이면 두 칸 수 입력란이 자동으로 맞춰져요. 값을 직접 수정해서 다른 경우도 계산해 볼 수 있어요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= QUIZ ================= -->
+<section id="quiz">
+  <div class="sec-head">
+    <div class="eyebrow"><span class="dot"></span>사고력 키우기</div>
+    <h2>배율을 두 배로 높이면 눈금은?</h2>
+    <p class="lede">앞선 탐구에서 확인한 원리를 바탕으로 다음 질문에 답해 보세요.</p>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-q">Q. 현미경의 배율을 100배에서 200배로 높였을 때, 접안마이크로미터 한 눈금의 길이는 어떻게 변할까요?</div>
+    <div class="quiz-options" id="quizOptions">
+      <button class="opt-btn" data-correct="false"><span class="letter">①</span>2배로 커진다</button>
+      <button class="opt-btn" data-correct="false"><span class="letter">②</span>변화가 없다</button>
+      <button class="opt-btn" data-correct="true"><span class="letter">③</span>1/2로 줄어든다</button>
+      <button class="opt-btn" data-correct="false"><span class="letter">④</span>1/4로 줄어든다</button>
+    </div>
+
+    <div class="feedback" id="quizFeedback">
+      <div class="fb-title" id="fbTitle"></div>
+      <p id="fbBody" style="margin:0 0 4px 0; font-size:14.5px; color:var(--ink);"></p>
+      <div class="compare-row">
+        <div class="compare-item">
+          <div class="cap">100배 → 접안눈금 10 μm</div>
+          <svg id="quizSvgA" viewBox="0 0 500 220"></svg>
+        </div>
+        <div class="compare-item">
+          <div class="cap">200배 → 접안눈금 5 μm</div>
+          <svg id="quizSvgB" viewBox="0 0 500 220"></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SCOPE (04) ================= -->
+<section id="scope">
+  <div class="sec-head">
+    <div class="eyebrow"><span class="dot"></span>탐구 확장</div>
+    <h2>같은 백혈구, 다른 현미경으로 보면?</h2>
+    <p class="lede">광학현미경은 빛을, 전자현미경은 전자빔을 이용해 시료를 관찰합니다. 사용하는 매체가 다르기 때문에 해상력(구분할 수 있는 최소 거리)과 관찰할 수 있는 정보도 달라집니다. 같은 백혈구를 세 가지 현미경으로 각각 찍은 사진을 비교해보세요.</p>
+  </div>
+
+  <div class="scope-grid">
+    <div class="scope-card">
+      <div class="scope-photo light-bg"><img src="img/wbc_light.png" alt="광학현미경으로 관찰한 백혈구"></div>
+      <div class="scope-body">
+        <span class="scope-tag">광학현미경 (LM)</span>
+        <h3>염색된 백혈구, 자연광에 가까운 색</h3>
+        <p>가시광선을 이용해 관찰하며, 염색약으로 세포와 핵을 물들여 광학현미경으로도 핵과 세포질을 구별할 수 있게 합니다. 살아있는 시료도 관찰할 수 있다는 장점이 있습니다.</p>
+        <div class="scope-meta">
+          <span>매체 <b>가시광선</b></span>
+          <span>해상력 <b>약 200 nm</b></span>
+          <span>정보 <b>세포 전체 형태·염색된 핵</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scope-card">
+      <div class="scope-photo"><img src="img/wbc_sem.png" alt="주사전자현미경으로 관찰한 백혈구"></div>
+      <div class="scope-body">
+        <span class="scope-tag">주사전자현미경 (SEM)</span>
+        <h3>표면의 입체적인 굴곡까지</h3>
+        <p>시료 표면을 전자빔으로 훑으며 튕겨 나오는 전자를 검출해 입체감 있는 흑백 이미지를 얻습니다. 백혈구 표면의 미세한 돌기와 주름까지 관찰할 수 있습니다.</p>
+        <div class="scope-meta">
+          <span>매체 <b>전자빔 (표면 반사)</b></span>
+          <span>해상력 <b>약 1~10 nm</b></span>
+          <span>정보 <b>세포 표면의 입체 구조</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scope-card">
+      <div class="scope-photo"><img src="img/wbc_tem.png" alt="투과전자현미경으로 관찰한 백혈구"></div>
+      <div class="scope-body">
+        <span class="scope-tag">투과전자현미경 (TEM)</span>
+        <h3>세포 내부의 미세 구조까지</h3>
+        <p>얇게 자른 시료를 전자빔이 투과하며 내부 구조를 보여줍니다. 핵 속 응축된 염색질, 세포소기관의 분포 등 세포 내부의 미세 구조를 관찰할 수 있습니다.</p>
+        <div class="scope-meta">
+          <span>매체 <b>전자빔 (투과)</b></span>
+          <span>해상력 <b>약 0.1~1 nm</b></span>
+          <span>정보 <b>세포 내부 미세 구조</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scope-table-wrap">
+    <table class="scope-table">
+      <thead><tr><th>비교 항목</th><th>광학현미경</th><th>주사전자현미경(SEM)</th><th>투과전자현미경(TEM)</th></tr></thead>
+      <tbody>
+        <tr><td>이용하는 매체</td><td>가시광선</td><td>전자빔 (표면 반사)</td><td>전자빔 (시료 투과)</td></tr>
+        <tr><td>해상력</td><td>약 200 nm</td><td>약 1~10 nm</td><td>약 0.1~1 nm</td></tr>
+        <tr><td>시료 준비</td><td>비교적 간단, 염색 가능</td><td>건조·금속 코팅 필요</td><td>매우 얇게 절편, 중금속 염색</td></tr>
+        <tr><td>살아있는 시료 관찰</td><td>가능</td><td>불가능</td><td>불가능</td></tr>
+        <tr><td>얻을 수 있는 정보</td><td>색이 있는 전체 형태</td><td>표면의 입체 구조</td><td>내부의 미세 구조</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>미래엔 「세포와 물질대사」Ⅰ. 세포 · 세포의 구조와 기능 (22–23쪽) 학습 내용을 바탕으로 제작한 학습용 시뮬레이션 · 전자현미경 사진은 업로드된 자료를 사용했습니다.</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- shared math ----------
+  function nOcFor(mag){ return Math.max(2, Math.round(mag/10)); }
+  function ocularLenFor(mag){ return (10*10)/nOcFor(mag); }
+
+  function rulerMarkup(mag, opts){
+    opts = opts || {};
+    const nObj = 10;
+    const nOc = nOcFor(mag);
+    const x0 = 40, x1 = 420, W = x1-x0;
+    const objSpacing = W/nObj;
+    const ocSpacing = W/nOc;
+    const midY = 110;
+
+    let s = '';
+    s += `<circle cx="230" cy="110" r="150" fill="none"/>`;
+
+    for(let i=1;i<=4;i++){
+      const xo = x1 + i*objSpacing;
+      if(xo < 496) s += `<line x1="${xo}" y1="${midY-16}" x2="${xo}" y2="${midY+16}" stroke="#1B1B1B" stroke-opacity="0.25" stroke-width="2"/>`;
+    }
+
+    for(let i=0;i<=nObj;i++){
+      const x = x0 + i*objSpacing;
+      const tall = (i%1===0);
+      s += `<line x1="${x}" y1="${midY-18}" x2="${x}" y2="${midY+18}" stroke="#1B1B1B" stroke-width="${i%5===0?2.6:1.8}"/>`;
+      if(i%1===0){
+        s += `<text x="${x}" y="${midY+34}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#1B1B1B">${i}</text>`;
+      }
+    }
+
+    const ocLabelStep = nOc>20 ? 5 : (nOc>10 ? 2 : 1);
+    for(let i=0;i<=nOc;i++){
+      const x = x0 + i*ocSpacing;
+      s += `<line x1="${x}" y1="${midY-14}" x2="${x}" y2="${midY+14}" stroke="#2F9E63" stroke-width="${i%ocLabelStep===0?2.2:1.2}"/>`;
+      if(i%ocLabelStep===0){
+        s += `<text x="${x}" y="${midY-24}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#1E7A4C">${i}</text>`;
+      }
+    }
+
+    s += `<line x1="${x0-6}" y1="${midY}" x2="${x1+30}" y2="${midY}" stroke="#16241C" stroke-opacity="0.12" stroke-width="1"/>`;
+    s += `<circle cx="${x0}" cy="${midY}" r="4" fill="#DE9B3A"/>`;
+    s += `<text x="${x0}" y="${midY+52}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#B87A22">0 정렬</text>`;
+
+    if(!opts.hideOverlap){
+      s += `<line x1="${x1}" y1="${midY-46}" x2="${x1}" y2="${midY+46}" stroke="#DE9B3A" stroke-width="2" stroke-dasharray="4 4"/>`;
+      s += `<circle cx="${x1}" cy="${midY}" r="5" fill="#DE9B3A"/>`;
+      s += `<text x="${x1}" y="${midY-54}" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="12" font-weight="700" fill="#B87A22">여기서 겹쳐요</text>`;
+      s += `<text x="${x1}" y="${midY+50}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#B87A22">대물 ${nObj}칸 = 접안 ${nOc}칸</text>`;
+    }
+
+    return s;
+  }
+
+  function paintRuler(svgEl, mag, opts){
+    svgEl.innerHTML = rulerMarkup(mag, opts);
+  }
+
+  function paintHero(mag){
+    const objG = document.getElementById('heroObj');
+    const ocG = document.getElementById('heroOc');
+    const nOc = nOcFor(mag);
+    const nObj = 10;
+    const x0=22, x1=278, W=x1-x0, midY=150;
+    const objSpacing=W/nObj, ocSpacing=W/nOc;
+    let obj='', oc='';
+    for(let i=0;i<=nObj;i++){ const x=x0+i*objSpacing; obj+=`<line x1="${x}" y1="${midY-70}" x2="${x}" y2="${midY+70}" />`; }
+    for(let i=0;i<=nOc;i++){ const x=x0+i*ocSpacing; oc+=`<line x1="${x}" y1="${midY-50}" x2="${x}" y2="${midY+50}" />`; }
+    objG.innerHTML = obj;
+    ocG.innerHTML = oc;
+  }
+
+  const magSlider = document.getElementById('magSlider');
+  const magVal = document.getElementById('magVal');
+  const rulerSvg = document.getElementById('rulerSvg');
+  const objCount = document.getElementById('objCount');
+  const ocCount = document.getElementById('ocCount');
+  const formula1 = document.getElementById('formula1');
+
+  let currentMag = 100;
+  let userEditedCounts = false;
+
+  function sliderFill(el){
+    const pct = (el.value-el.min)/(el.max-el.min)*100;
+    el.style.setProperty('--fill', pct+'%');
+  }
+
+  function updateFormula1(){
+    const o = parseFloat(objCount.value)||0;
+    const c = parseFloat(ocCount.value)||1;
+    const result = (o*10)/c;
+    formula1.innerHTML =
+      `접안눈금 한 칸의 길이 = <span class="mono">대물 눈금 칸 수(${o}개)</span> ⁄ <span class="mono">접안 눈금 칸 수(${c}개)</span> × 10 μm<br>`+
+      `&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="result">${result.toFixed(2)} μm</span>`;
+    return result;
+  }
+
+  function renderLab1(){
+    paintRuler(rulerSvg, currentMag);
+    if(!userEditedCounts){
+      objCount.value = 10;
+      ocCount.value = nOcFor(currentMag);
+    }
+    const val = updateFormula1();
+    syncCarry(currentMag, val);
+    paintHero(currentMag);
+  }
+
+  magSlider.addEventListener('input', function(){
+    currentMag = parseInt(magSlider.value,10);
+    magVal.textContent = currentMag;
+    sliderFill(magSlider);
+    userEditedCounts = false;
+    renderLab1();
+  });
+  objCount.addEventListener('input', function(){ userEditedCounts = true; const v=updateFormula1(); syncCarry(currentMag, v, true); });
+  ocCount.addEventListener('input', function(){ userEditedCounts = true; const v=updateFormula1(); syncCarry(currentMag, v, true); });
+
+  const cellSvg = document.getElementById('cellSvg');
+  const cellSlider = document.getElementById('cellSlider');
+  const cellCountVal = document.getElementById('cellCountVal');
+  const cellCountInput = document.getElementById('cellCountInput');
+  const ocLenInput = document.getElementById('ocLenInput');
+  const formula2 = document.getElementById('formula2');
+  const carryVal = document.getElementById('carryVal');
+  const carryMag = document.getElementById('carryMag');
+
+  function syncCarry(mag, ocLen, manual){
+    carryMag.textContent = mag;
+    carryVal.textContent = ocLen.toFixed(2)+' μm';
+    if(!lab2Touched){
+      ocLenInput.value = ocLen.toFixed(2);
+      updateFormula2();
+      renderCellViz(mag);
+    }
+  }
+
+  let lab2Touched = false;
+
+  function paintCell(svgEl, mag, cellCells){
+    const nOc = nOcFor(mag);
+    const x0=40, x1=420, W=x1-x0, midY=110;
+    const ocSpacing = W/nOc;
+    let s='';
+    const labelStep = nOc>20?5:(nOc>10?2:1);
+    for(let i=0;i<=nOc;i++){
+      const x=x0+i*ocSpacing;
+      s+=`<line x1="${x}" y1="${midY+20}" x2="${x}" y2="${midY+38}" stroke="#2F9E63" stroke-width="${i%labelStep===0?2.2:1.2}"/>`;
+      if(i%labelStep===0) s+=`<text x="${x}" y="${midY+52}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="#1E7A4C">${i}</text>`;
+    }
+    s+=`<line x1="${x0-6}" y1="${midY+29}" x2="${x1+6}" y2="${midY+29}" stroke="#16241C" stroke-opacity="0.1" stroke-width="1"/>`;
+
+    const cellStart = x0 + ocSpacing*1;
+    const cellLen = Math.min(ocSpacing*cellCells, x1-cellStart+ocSpacing*2);
+    const cy = midY-30, ch=34;
+    const rx = ch/2;
+    s += `<g>
+      <rect x="${cellStart}" y="${cy-ch/2}" width="${Math.max(cellLen,ch)}" height="${ch}" rx="${rx}" ry="${rx}" fill="#BFE3CC" stroke="#2F6B4F" stroke-width="2.2"/>`;
+    const turns = Math.max(2, Math.round(cellLen/26));
+    for(let t=0;t<turns;t++){
+      const cx1 = cellStart + 12 + t*(Math.max(cellLen-24,10)/Math.max(turns-1,1));
+      s += `<path d="M ${cx1} ${cy-rx+4} Q ${cx1+10} ${cy} ${cx1} ${cy+rx-4}" fill="none" stroke="#2F8C57" stroke-width="2" opacity="0.6"/>`;
+    }
+    s += `<text x="${cellStart+Math.max(cellLen,ch)/2}" y="${cy-ch/2-10}" text-anchor="middle" font-family="Noto Sans KR, sans-serif" font-size="11.5" fill="#2F6B4F" font-weight="700">해캄 세포</text>`;
+    s += `</g>`;
+
+    const bx0 = cellStart, bx1 = cellStart+Math.max(cellLen,ch);
+    s += `<line x1="${bx0}" y1="${midY+8}" x2="${bx1}" y2="${midY+8}" stroke="#DE9B3A" stroke-width="2"/>`;
+    s += `<line x1="${bx0}" y1="${midY+4}" x2="${bx0}" y2="${midY+12}" stroke="#DE9B3A" stroke-width="2"/>`;
+    s += `<line x1="${bx1}" y1="${midY+4}" x2="${bx1}" y2="${midY+12}" stroke="#DE9B3A" stroke-width="2"/>`;
+
+    svgEl.innerHTML = s;
+  }
+
+  function renderCellViz(mag){
+    const cells = parseFloat(cellSlider.value)||1;
+    paintCell(cellSvg, mag, cells);
+  }
+
+  function updateFormula2(){
+    const n = parseFloat(cellCountInput.value)||0;
+    const len = parseFloat(ocLenInput.value)||0;
+    const result = n*len;
+    formula2.innerHTML =
+      `세포의 실제 크기 = <span class="mono">측정한 눈금 칸 수(${n}칸)</span> × <span class="mono">접안눈금 한 칸의 길이(${len} μm)</span><br>`+
+      `&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="result">${result.toFixed(2)} μm</span>`;
+  }
+
+  cellSlider.addEventListener('input', function(){
+    lab2Touched = true;
+    const v = cellSlider.value;
+    cellCountVal.textContent = v;
+    cellCountInput.value = v;
+    sliderFill(cellSlider);
+    updateFormula2();
+    renderCellViz(currentMag);
+  });
+  cellCountInput.addEventListener('input', function(){
+    lab2Touched = true;
+    let v = parseInt(cellCountInput.value,10)||1;
+    v = Math.max(2, Math.min(30, v));
+    cellSlider.value = v;
+    cellCountVal.textContent = v;
+    sliderFill(cellSlider);
+    updateFormula2();
+    renderCellViz(currentMag);
+  });
+  ocLenInput.addEventListener('input', function(){ lab2Touched = true; updateFormula2(); });
+
+  sliderFill(cellSlider);
+  updateFormula2();
+
+  sliderFill(magSlider);
+  renderLab1();
+
+  const quizOptions = document.getElementById('quizOptions');
+  const quizFeedback = document.getElementById('quizFeedback');
+  const fbTitle = document.getElementById('fbTitle');
+  const fbBody = document.getElementById('fbBody');
+  let answered = false;
+
+  quizOptions.querySelectorAll('.opt-btn').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      if(answered) return;
+      answered = true;
+      const correct = btn.dataset.correct === 'true';
+      quizOptions.querySelectorAll('.opt-btn').forEach(b=>{
+        b.disabled = true;
+        if(b.dataset.correct === 'true'){ b.classList.add('correct'); }
+        else if(b===btn){ b.classList.add('wrong'); }
+        else{ b.classList.add('dim'); }
+      });
+      quizFeedback.classList.add('show');
+      quizFeedback.classList.add(correct?'correct-fb':'wrong-fb');
+      fbTitle.textContent = correct ? '정답이에요!' : '아쉬워요, 다시 살펴볼까요?';
+      fbBody.innerHTML = `대물마이크로미터 눈금(10 μm)은 배율에 상관없이 고정이지만, 접안눈금 길이는 <span class="mono">1000 ÷ 배율</span>로 배율에 <b>반비례</b>해요.<br>
+      100배일 때 10 μm였던 한 눈금은 200배가 되면 <span class="mono">1000 ÷ 200 = 5 μm</span>, 즉 <b>절반</b>으로 줄어들어요. 배율이 커질수록 대물마이크로미터의 상이 더 크게 확대되어, 같은 접안눈금 한 칸 안에 더 작은 실제 길이가 들어가기 때문이에요.`;
+      paintRuler(document.getElementById('quizSvgA'), 100, {});
+      paintRuler(document.getElementById('quizSvgB'), 200, {});
+      quizFeedback.scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+  });
+
+  const navLinks = document.querySelectorAll('.progress-nav a');
+  const secs = ['hero','lab1','lab2','quiz','scope'].map(id=>document.getElementById(id));
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        navLinks.forEach(l=>l.classList.remove('active'));
+        const link = document.querySelector('.progress-nav a[data-sec="'+e.target.id+'"]');
+        if(link) link.classList.add('active');
+      }
+    });
+  }, {rootMargin:'-45% 0px -45% 0px'});
+  secs.forEach(s=>io.observe(s));
+
+})();
+</script>
+</body>
+</html>

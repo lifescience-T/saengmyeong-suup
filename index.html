@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>살림하는 과학교사의 생명수업</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #eef1e8;
+    --bg-deep: #e3e9db;
+    --card: #ffffff;
+    --line: #d7ddcd;
+    --ink: #1b2a20;
+    --ink-dim: #5c6b5c;
+    --brand: #22563f;
+    --brand-2: #3e8e68;
+    --stamp: #b3452f;
+    --mustard: #c98f2b;
+    --gray-unit: #6b7280;
+    --shadow: rgba(27,42,32,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:
+      radial-gradient(ellipse 70% 40% at 15% 0%, rgba(62,142,104,0.10), transparent),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:0 0 60px;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- header plate ---------- */
+  .plate{
+    margin:36px auto 0;
+    max-width:1160px;
+    padding:0 24px;
+  }
+  .plate-inner{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:34px 38px 30px;
+    position:relative;
+    box-shadow:0 1px 0 var(--line), 0 14px 30px -18px var(--shadow);
+  }
+  .plate-inner::before{
+    content:"";
+    position:absolute; top:14px; right:16px;
+    width:34px; height:34px;
+    border:2px solid var(--stamp);
+    border-radius:50%;
+    opacity:0.5;
+  }
+  .plate-inner::after{
+    content:"SPECIMEN";
+    position:absolute; top:24px; right:22px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:7.5px;
+    letter-spacing:0.05em;
+    color:var(--stamp);
+    opacity:0.55;
+    transform:rotate(-14deg);
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--brand);
+    display:flex;align-items:center;gap:9px;
+    margin-bottom:14px;
+  }
+  .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--brand);}
+  h1{
+    font-family:'Fraunces',serif;
+    font-optical-sizing:auto;
+    font-weight:700;
+    font-size:clamp(30px,4vw,42px);
+    margin:0 0 10px;
+    letter-spacing:-0.01em;
+    line-height:1.14;
+  }
+  .plate-sub{
+    color:var(--ink-dim);
+    font-size:15px;
+    line-height:1.65;
+    max-width:640px;
+    margin:0;
+  }
+
+  /* ---------- drawer tabs ---------- */
+  .tabs{
+    display:flex;
+    gap:6px;
+    margin:26px auto 0;
+    max-width:1160px;
+    padding:0 24px;
+    overflow-x:auto;
+  }
+  .tab{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;
+    white-space:nowrap;
+    padding:11px 18px 10px;
+    background:var(--bg-deep);
+    border:1px solid var(--line);
+    border-bottom:none;
+    border-radius:7px 7px 0 0;
+    color:var(--ink-dim);
+    cursor:pointer;
+    position:relative;
+    top:1px;
+    transition:.15s;
+  }
+  .tab .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;}
+  .tab:hover{color:var(--ink);}
+  .tab.active{
+    background:var(--card);
+    color:var(--ink);
+    font-weight:700;
+    border-color:var(--line);
+    box-shadow:0 -2px 0 var(--tab-color,var(--brand)) inset;
+  }
+
+  /* ---------- grid section ---------- */
+  .shelf{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;
+    padding:30px;
+    max-width:1160px;
+    margin:0 auto;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:18px;
+  }
+
+  .card{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.4), transparent 40%), var(--card);
+    position:relative;
+    transition:.15s;
+  }
+  .card:hover{box-shadow:0 10px 24px -16px var(--shadow); transform:translateY(-2px);}
+  .card.todo{border-style:dashed; opacity:0.72;}
+
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .card-no{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--ink-dim);
+    display:flex;align-items:center;gap:7px;
+  }
+  .card-no .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+  .badge-ready{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--brand);
+    border:1px solid var(--brand-2);
+    background:rgba(62,142,104,0.08);
+    padding:2px 7px;
+    border-radius:20px;
+  }
+  .badge-todo{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    color:var(--ink-dim);
+    border:1px dashed var(--line);
+    padding:2px 7px;
+    border-radius:20px;
+  }
+
+  .card h3{
+    font-family:'Fraunces',serif;
+    font-size:19px;
+    font-weight:600;
+    margin:0;
+    line-height:1.3;
+  }
+  .card p{
+    margin:0;
+    font-size:13.2px;
+    color:var(--ink-dim);
+    line-height:1.6;
+    flex:1;
+  }
+  .tags{display:flex;flex-wrap:wrap;gap:6px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--mustard);
+    border:1px solid rgba(201,143,43,0.4);
+    background:rgba(201,143,43,0.07);
+    padding:3px 8px;
+    border-radius:20px;
+  }
+  .card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
+  .open-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--brand);
+    color:#fff;
+    font-weight:600;
+    font-size:13px;
+    padding:9px 15px;
+    border-radius:7px;
+    text-decoration:none;
+    border:1px solid var(--brand);
+    transition:.15s;
+  }
+  .open-btn:hover{background:var(--brand-2);border-color:var(--brand-2);}
+  .open-btn:focus-visible{outline:2px solid var(--brand); outline-offset:2px;}
+  .new-tab-hint{font-size:10.5px;color:var(--ink-dim);}
+  .todo-note{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    color:var(--ink-dim);
+    border:1px dashed var(--line);
+    border-radius:7px;
+    padding:9px 12px;
+    text-align:center;
+  }
+
+  .empty{
+    grid-column:1/-1;
+    text-align:center;
+    padding:40px 20px;
+    color:var(--ink-dim);
+    font-size:14px;
+  }
+
+  /* ---------- add-new section ---------- */
+  .add-section{
+    max-width:1160px;
+    margin:34px auto 0;
+    padding:0 24px;
+  }
+  .add-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:26px 28px;
+  }
+  .add-card h2{
+    font-family:'Fraunces',serif;
+    font-size:20px;
+    margin:0 0 6px;
+  }
+  .add-card > p{
+    color:var(--ink-dim);
+    font-size:13.5px;
+    margin:0 0 18px;
+    line-height:1.65;
+  }
+  .steps{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-bottom:18px;
+  }
+  @media (max-width:800px){ .steps{grid-template-columns:1fr;} }
+  .step{
+    background:var(--bg-deep);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    font-size:12.8px;
+    line-height:1.6;
+    color:var(--ink);
+  }
+  .step b{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--brand);
+    margin-bottom:5px;
+  }
+  .code-box{
+    position:relative;
+    background:#16241b;
+    border-radius:8px;
+    padding:16px 18px;
+    overflow-x:auto;
+  }
+  .code-box pre{
+    margin:0;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12.3px;
+    line-height:1.65;
+    color:#d7ecdd;
+    white-space:pre;
+  }
+  .code-box .kw{color:#8fd6ac;}
+  .code-box .str{color:#f3c988;}
+  .copy-btn{
+    position:absolute; top:10px; right:10px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    background:rgba(255,255,255,0.08);
+    color:#d7ecdd;
+    border:1px solid rgba(255,255,255,0.16);
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .copy-btn:hover{background:rgba(255,255,255,0.16);}
+
+  footer{
+    max-width:1160px;
+    margin:30px auto 0;
+    padding:16px 24px 0;
+    font-size:11.5px;
+    color:var(--ink-dim);
+  }
+</style>
+</head>
+<body>
+
+  <div class="plate">
+    <div class="plate-inner">
+      <div class="eyebrow">Biology Class · Web App Archive</div>
+      <h1>살림하는 과학교사의<br>생명수업</h1>
+      <p class="plate-sub">2022개정 교육과정 LIFE SCIENCE CLASS 수업에 필요한 웹앱을 단원별로 정리한 홈페이지입니다.</p>
+    </div>
+  </div>
+
+  <nav class="tabs" id="tabs"></nav>
+  <div class="shelf">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="add-section">
+    <div class="add-card">
+      <h2>+ 새 활동 추가하는 법</h2>
+      <p>세 단계면 충분합니다. 코드를 직접 몰라도 아래 틀만 그대로 복사해서 값만 바꾸면 돼요.</p>
+      <div class="steps">
+        <div class="step"><b>STEP 1</b>새로 만든 웹앱 HTML 파일을 이 index.html과 같은 폴더의 <code>apps</code> 폴더 안에 넣습니다.</div>
+        <div class="step"><b>STEP 2</b>index.html을 메모장(또는 코드 편집기)으로 열고, 아래 목록(appsData)에 항목 하나를 복사해 붙여넣은 뒤 내용만 바꿉니다.</div>
+        <div class="step"><b>STEP 3</b>저장하고 index.html을 새로고침하면 카드가 자동으로 나타납니다. 별도 설치나 서버가 필요 없습니다.</div>
+      </div>
+      <div class="code-box">
+        <button class="copy-btn" id="copyBtn">복사</button>
+        <pre id="codeTemplate">{
+  <span class="kw">unit</span>: <span class="str">"cell"</span>,        <span class="kw">// cell(세포) · metabolism(물질대사와 에너지) · respiration(세포호흡과 광합성) · etc(기타)</span>
+  <span class="kw">no</span>: <span class="str">"02"</span>,
+  <span class="kw">title</span>: <span class="str">"삼투 현상 시뮬레이션"</span>,
+  <span class="kw">desc</span>: <span class="str">"반투과성막을 경계로 물이 이동하는 삼투 현상을 관찰합니다."</span>,
+  <span class="kw">tags</span>: [<span class="str">"#삼투"</span>, <span class="str">"#반투과성막"</span>, <span class="str">"#세포"</span>],
+  <span class="kw">file</span>: <span class="str">"apps/osmosis_simulation.html"</span>,
+  <span class="kw">status</span>: <span class="str">"ready"</span>   <span class="kw">// ready(바로 열기) · todo(준비 중 표시만)</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <footer>살림하는 과학교사의 생명수업 · 로컬 폴더에서 바로 열어 사용하는 정적 홈페이지입니다. 서버·설치·로그인 없이 index.html 더블클릭만으로 동작합니다.</footer>
+
+<script>
+// ============================================================
+//  appsData — 여기에 항목을 추가하면 아래 화면에 카드가 생깁니다.
+// ============================================================
+const appsData = [
+  {
+    unit: "cell",
+    no: "01",
+    title: "리포솜 자기조립 시뮬레이션",
+    desc: "인지질(머리 1개·꼬리 2개)이 물속에서 스스로 이중층을 이루어 리포솜을 형성하는 과정을 관찰합니다. mRNA 백신 탑재 관찰 기능 포함.",
+    tags: ["#세포막", "#인지질이중층", "#리포솜", "#mRNA백신"],
+    file: "apps/liposome_simulation.html",
+    status: "ready"
+  },
+  {
+    unit: "cell",
+    no: "02",
+    title: "세포는 얼마나 작을까? — 마이크로미터 시뮬레이션",
+    desc: "대물·접안마이크로미터 눈금이 겹치는 원리를 배율 슬라이더로 직접 확인하고, 해캄 세포의 실제 크기를 계산해보는 2단계 탐구형 시뮬레이션입니다.",
+    tags: ["#현미경", "#마이크로미터", "#세포크기측정", "#해캄"],
+    file: "apps/micrometer_simulation.html",
+    status: "ready"
+  },
+  {
+    unit: "cell",
+    no: "03",
+    title: "단백질은 어떻게 만들어지고 이동할까",
+    desc: "세포호흡 효소(자유 리보솜→미토콘드리아 직접 이동)와 인슐린 호르몬(부착 리보솜→소포체→골지체→분비) 두 경로를 애니메이션으로 비교합니다.",
+    tags: ["#단백질합성", "#전사와번역", "#소포체", "#골지체", "#분비"],
+    file: "apps/protein_pathway_simulation.html",
+    status: "ready"
+  },
+  {
+    unit: "cell",
+    no: "04",
+    title: "PhET · Gene Expression Essentials",
+    desc: "콜로라도 대학 PhET의 공식 시뮬레이션입니다. mRNA 전사, 리보솜 번역, 단백질 합성 과정을 직접 조작하며 관찰할 수 있고 한국어를 지원합니다. 외부 사이트(phet.colorado.edu)에서 새 탭으로 열립니다.",
+    tags: ["#전사", "#번역", "#PhET", "#유전자발현"],
+    file: "https://phet.colorado.edu/sims/html/gene-expression-essentials/latest/gene-expression-essentials_ko.html",
+    status: "ready"
+  },
+  {
+    unit: "cell",
+    no: "05",
+    title: "세포막을 통한 물질 수송",
+    desc: "막의 투과성 → 수송단백질의 종류 → 수동수송 → 능동수송, 네 단계로 나누어 탭으로 전환하며 관찰합니다. 물질 종류별 선택, 채널·운반체 비교, Na⁺-K⁺ 펌프 작동 과정을 직접 조작할 수 있습니다.",
+    tags: ["#막의투과성", "#수송단백질", "#수동수송", "#능동수송", "#세포막"],
+    file: "apps/membrane_transport_simulation.html",
+    status: "ready"
+  },
+  {
+    unit: "cell",
+    no: "06",
+    title: "세포의 연구 방법 — 자기방사법(Autoradiography)",
+    desc: "방사성 동위원소(¹⁴C)로 표지한 이산화탄소를 이용해 광합성 산물의 이동 경로를 추적한 캘빈의 '롤리팝 실험'을 통해 자기방사법의 원리를 알아봅니다. BioNinja 원문 자료(영상 포함)로 연결됩니다.",
+    tags: ["#자기방사법", "#방사성동위원소", "#캘빈회로", "#연구방법"],
+    file: "https://old-ib.bioninja.com.au/higher-level/topic-8-metabolism-cell/untitled-2/calvin-cycle.html",
+    status: "ready"
+  },
+  {
+    unit: "cell",
+    no: "07",
+    title: "유전자 발현 — DNA에서 단백질까지",
+    desc: "LabXchange의 인터랙티브 시뮬레이션으로 전사(DNA→mRNA)와 번역(mRNA→단백질) 전 과정을 단계별로 직접 조작하며 학습합니다. 외부 사이트(labxchange.org)에서 새 탭으로 열립니다.",
+    tags: ["#유전자발현", "#전사", "#번역", "#LabXchange"],
+    file: "https://www.labxchange.org/library/items/lb:LabXchange:fb468b9e:lx_simulation:1?fullscreen=true",
+    status: "ready"
+  },
+  {
+    unit: "cell",
+    no: "—",
+    title: "다음 활동을 이 자리에 추가해보세요",
+    desc: "예: 세포 주기, 세포 분열 시뮬레이션",
+    tags: ["#세포주기"],
+    status: "todo"
+  },
+  {
+    unit: "metabolism",
+    no: "—",
+    title: "이 단원에는 아직 활동이 없어요",
+    desc: "예: 효소 반응속도, 활성화 에너지, 기질 특이성 시뮬레이션",
+    tags: ["#효소", "#물질대사"],
+    status: "todo"
+  },
+  {
+    unit: "respiration",
+    no: "—",
+    title: "이 단원에는 아직 활동이 없어요",
+    desc: "예: 세포호흡 전자전달계, 광합성 명반응·캘빈회로 시뮬레이션",
+    tags: ["#세포호흡", "#광합성"],
+    status: "todo"
+  }
+];
+
+const UNITS = [
+  { id:"all",         label:"전체",              color:"var(--ink-dim)" },
+  { id:"cell",         label:"I. 세포",            color:"var(--brand)" },
+  { id:"metabolism",   label:"II. 물질대사와 에너지", color:"var(--mustard)" },
+  { id:"respiration",  label:"III. 세포호흡과 광합성", color:"var(--stamp)" },
+  { id:"etc",          label:"기타 활동",           color:"var(--gray-unit)" }
+];
+
+let activeUnit = "all";
+
+function unitColor(id){
+  const u = UNITS.find(u=>u.id===id);
+  return u ? u.color : "var(--ink-dim)";
+}
+function unitLabel(id){
+  const u = UNITS.find(u=>u.id===id);
+  return u ? u.label : id;
+}
+
+function renderTabs(){
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  UNITS.forEach(u=>{
+    const count = u.id==="all" ? appsData.length : appsData.filter(a=>a.unit===u.id).length;
+    const el = document.createElement('div');
+    el.className = 'tab' + (u.id===activeUnit ? ' active' : '');
+    el.style.setProperty('--tab-color', u.color);
+    el.innerHTML = `<span class="dot" style="background:${u.color}"></span>${u.label} <span style="opacity:.55">(${count})</span>`;
+    el.addEventListener('click', ()=>{ activeUnit = u.id; renderTabs(); renderGrid(); });
+    tabsEl.appendChild(el);
+  });
+}
+
+function renderGrid(){
+  const gridEl = document.getElementById('grid');
+  gridEl.innerHTML = '';
+  const list = activeUnit==="all" ? appsData : appsData.filter(a=>a.unit===activeUnit);
+
+  if(list.length===0){
+    gridEl.innerHTML = '<div class="empty">이 단원에는 아직 등록된 활동이 없습니다. 아래 안내를 따라 추가해보세요.</div>';
+    return;
+  }
+
+  list.forEach(app=>{
+    const card = document.createElement('div');
+    card.className = 'card' + (app.status==='todo' ? ' todo' : '');
+    const tagsHtml = (app.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('');
+    const badge = app.status==='todo'
+      ? '<span class="badge-todo">준비 중</span>'
+      : '<span class="badge-ready">바로 열기</span>';
+    const footer = app.status==='todo'
+      ? '<div class="todo-note">위 코드 틀을 복사해 이 자리에 새 활동을 등록하세요</div>'
+      : `<div class="card-foot">
+           <a class="open-btn" href="${app.file}" target="_blank" rel="noopener">웹앱 열기 →</a>
+           <span class="new-tab-hint">새 탭에서 열립니다</span>
+         </div>`;
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-no"><span class="dot" style="background:${unitColor(app.unit)}"></span>no. ${app.no} · ${unitLabel(app.unit)}</span>
+        ${badge}
+      </div>
+      <h3>${app.title}</h3>
+      <p>${app.desc}</p>
+      <div class="tags">${tagsHtml}</div>
+      ${footer}
+    `;
+    gridEl.appendChild(card);
+  });
+}
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('codeTemplate').innerText;
+  const btn = document.getElementById('copyBtn');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      btn.textContent = '복사됨 ✓';
+      setTimeout(()=>btn.textContent='복사', 1600);
+    }).catch(()=>{ fallbackSelect(); });
+  } else {
+    fallbackSelect();
+  }
+  function fallbackSelect(){
+    const range = document.createRange();
+    range.selectNode(document.getElementById('codeTemplate'));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    btn.textContent = '선택됨 (Ctrl+C)';
+    setTimeout(()=>btn.textContent='복사', 1800);
+  }
+});
+
+renderTabs();
+renderGrid();
+</script>
+</body>
+</html>
