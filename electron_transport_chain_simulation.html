@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세포호흡 — 전자전달계와 산화적 인산화 시뮬레이션</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05080f; --panel:#0d1420; --panel-2:#101a29; --line: rgba(148,178,214,0.14);
+    --text:#e6edf7; --text-dim:#8a99b3;
+    --nadh:#f28cb1; --fadh:#ffd166; --e:#fff27a; --h:#7ec8e3; --o2:#5eead4; --h2o:#9ad0ff; --atp:#8fe3a3; --mem:#f6b551;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:radial-gradient(ellipse 90% 60% at 50% -10%, rgba(94,234,212,0.08), transparent), var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; padding:30px 20px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  .eyebrow{font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--h); display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+  .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--h); box-shadow:0 0 8px var(--h);}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:clamp(24px,3.4vw,34px); margin:0 0 10px;}
+  .sub{color:var(--text-dim); font-size:14.5px; max-width:760px; line-height:1.65; margin:0 0 22px;}
+
+  .stage-wrap{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(250px,0.8fr); gap:20px;}
+  @media (max-width:920px){ .stage-wrap{grid-template-columns:1fr;} }
+
+  .canvas-card{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:14px;}
+  canvas#cv{width:100%; height:auto; display:block; border-radius:10px; background:radial-gradient(circle at 50% 20%, #0a1220 0%, #05080f 80%);}
+  .state-bar{
+    margin-top:10px; padding:10px 14px; border-radius:9px; background:var(--panel-2);
+    font-family:'JetBrains Mono',monospace; font-size:11.8px; display:flex; flex-wrap:wrap; gap:5px 16px;
+  }
+  .state-bar b{color:var(--atp);}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:20px; display:flex; flex-direction:column; gap:14px;}
+  .panel h4{font-family:'Space Grotesk',sans-serif; font-size:15px; margin:0;}
+  .desc-box{background:var(--panel-2); border-radius:10px; padding:13px 14px; font-size:12.8px; line-height:1.75; color:var(--text);}
+  .desc-box b{color:var(--h);}
+  .legend{display:flex; flex-direction:column; gap:7px; font-size:12px; color:var(--text-dim);}
+  .legend .row{display:flex; align-items:center; gap:9px;}
+  .legend .sw{width:12px;height:12px;border-radius:50%; flex:none;}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+  button.act{
+    flex:1; min-width:110px; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-weight:600; font-size:12.6px; padding:10px 8px; border-radius:9px; cursor:pointer;
+  }
+  button.act:hover{border-color:var(--h); color:var(--h);}
+  button.act.nadh:hover{border-color:var(--nadh); color:var(--nadh);}
+  button.act.fadh:hover{border-color:var(--fadh); color:var(--fadh);}
+  button.act.primary{background:var(--h); color:#04231d; border-color:var(--h);}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; padding:10px 12px;}
+  .toggle-row .t-label{font-size:12.6px;}
+  .switch{position:relative; width:38px; height:21px; flex:none;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider-toggle{position:absolute; inset:0; background:#26324a; border-radius:20px; cursor:pointer; transition:.2s;}
+  .slider-toggle::before{content:""; position:absolute; width:15px; height:15px; left:3px; top:3px; background:#dbe6f5; border-radius:50%; transition:.2s;}
+  .switch input:checked + .slider-toggle{background:var(--h);}
+  .switch input:checked + .slider-toggle::before{transform:translateX(17px); background:#04231d;}
+  .compare{margin-top:24px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px 24px;}
+  .compare h3{font-family:'Space Grotesk',sans-serif; font-size:17px; margin:0 0 14px;}
+  table{width:100%; border-collapse:collapse; font-size:12.8px;}
+  th,td{text-align:left; padding:9px 11px; border-bottom:1px solid var(--line);}
+  th{font-family:'JetBrains Mono',monospace; font-size:10.2px; color:var(--text-dim); text-transform:uppercase;}
+  footer{margin-top:24px; font-size:11.2px; color:var(--text-dim); line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">세포호흡 · 전자전달계와 산화적 인산화</div>
+  <h1>전자전달계 &amp; 화학삼투 ATP 합성</h1>
+  <p class="sub">NADH·FADH₂가 전자를 내놓는 순간부터, 전자전달계를 따라 에너지를 잃으며 이동하고, 그 에너지로 H⁺가 막사이공간으로 퍼올려지고, 마지막으로 ATP 합성효소를 통해 ATP가 만들어지기까지의 전 과정을 직접 조작해보세요.</p>
+
+  <div class="stage-wrap">
+    <div class="canvas-card">
+      <canvas id="cv" width="700" height="430"></canvas>
+      <div class="state-bar" id="stateBar"></div>
+    </div>
+    <div class="panel">
+      <h4>조작하기</h4>
+      <div class="desc-box">
+        <b>NADH</b>는 복합체 I부터, <b>FADH₂</b>는 복합체 II부터 전자를 전달계로 들여보내요. NADH 경로만 복합체 I에서 H⁺를 한 번 더 퍼올리기 때문에, 같은 전자 2개라도 <b>NADH가 FADH₂보다 더 많은 H⁺ 기울기(=더 많은 ATP)</b>를 만들어요.
+      </div>
+      <div class="btn-row">
+        <button class="act nadh" id="btnNadh">+ NADH 공급</button>
+        <button class="act fadh" id="btnFadh">+ FADH₂ 공급</button>
+      </div>
+      <div class="toggle-row">
+        <div class="t-label">자동 공급 (세포호흡 지속)</div>
+        <label class="switch"><input type="checkbox" id="autoMode" checked><span class="slider-toggle"></span></label>
+      </div>
+      <div class="legend" id="legendBox"></div>
+      <div class="btn-row">
+        <button class="act primary" id="btnPlay">▶ 재생</button>
+        <button class="act" id="btnReset">초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <h3>전체 과정 한눈에 보기</h3>
+    <table>
+      <thead><tr><th>단계</th><th>반응물</th><th>생성물 / 결과</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>① 전자 공급</td><td>NADH / FADH₂</td><td>NAD⁺ / FAD + 2H⁺ + 2e⁻</td><td>NADH → 복합체 Ⅰ · FADH₂ → 복합체 Ⅱ</td></tr>
+        <tr><td>② 전자 전달</td><td>2e⁻ (고에너지)</td><td>2e⁻ (저에너지) + 방출 에너지</td><td>Ⅰ→Q→Ⅲ→Cyt c→Ⅳ 순서로 에너지 준위 하강</td></tr>
+        <tr><td>③ H⁺ 능동 수송</td><td>방출 에너지 + 기질 H⁺</td><td>막사이공간 H⁺ 축적</td><td>복합체 Ⅰ·Ⅲ·Ⅳ에서 펌핑 (Ⅱ는 펌핑 없음)</td></tr>
+        <tr><td>④ 최종 전자 수용</td><td>2e⁻ + 2H⁺ + ½O₂</td><td>H₂O</td><td>복합체 Ⅳ, O₂가 최종 전자 수용체</td></tr>
+        <tr><td>⑤ 화학삼투 ATP 합성</td><td>H⁺ (막사이공간→기질) + ADP + Pi</td><td>ATP</td><td>ATP 합성효소, 농도 기울기 확산이 동력</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>이 시뮬레이션은 전자전달계와 화학삼투의 원리를 직관적으로 보여주기 위한 단순화된 교육용 모델입니다 (H⁺:ATP 비율, 전자 이동 속도 등은 실제 값과 다를 수 있습니다).</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+function rand(a,b){ return a + Math.random()*(b-a); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function easeInOut(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+
+// ---------- layout ----------
+const IMS_TOP=18, IMS_BOT=185, MEM_TOP=185, MEM_BOT=228, MAT_TOP=228, MAT_BOT=402;
+const MEM_Y = (MEM_TOP+MEM_BOT)/2;
+const CYTC_Y = IMS_BOT-18;
+const CX = { c1:100, c2:215, c3:390, c4:530, atp:640 };
+const LEFT=25, RIGHT=675;
+
+const COMPLEX_COLORS = { c1:'#4C6EF5', c2:'#2E86C1', c3:'#8B5CF6', c4:'#E07A3F', atp:'#D9A441' };
+const ENERGY_LEVEL = { nadh:210, c1:168, c2:150, c3:126, c4:84, o2:0 };
+
+// ---------- shared drawing helpers ----------
+function drawBilayerH(){
+  ctx.save();
+  ctx.strokeStyle = 'rgba(246,181,81,0.35)';
+  const step=20;
+  for(let x=LEFT+8; x<RIGHT; x+=step){
+    ctx.beginPath(); ctx.arc(x, MEM_TOP+4, 3.1, 0, Math.PI*2); ctx.fillStyle='#5eead4'; ctx.fill();
+    ctx.lineWidth=1.8;
+    ctx.beginPath(); ctx.moveTo(x,MEM_TOP+4); ctx.lineTo(x-3.2,MEM_Y-1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,MEM_TOP+4); ctx.lineTo(x+3.2,MEM_Y-1); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, MEM_BOT-4, 3.1, 0, Math.PI*2); ctx.fillStyle='#5eead4'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x,MEM_BOT-4); ctx.lineTo(x-3.2,MEM_Y+1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,MEM_BOT-4); ctx.lineTo(x+3.2,MEM_Y+1); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawLabel(x,y,text,color,size,align){
+  ctx.save();
+  ctx.font = `${size||10.5}px JetBrains Mono, monospace`;
+  ctx.fillStyle = color||'rgba(230,237,247,0.7)';
+  ctx.textAlign = align||'center';
+  ctx.fillText(text,x,y);
+  ctx.restore();
+}
+function drawDot(x,y,r,color,glow){
+  ctx.save();
+  if(glow){ ctx.shadowColor=color; ctx.shadowBlur=glow; }
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+function drawComplex(cx, label, color, active){
+  ctx.save();
+  ctx.fillStyle=color; ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=2;
+  if(active){ ctx.shadowColor=color; ctx.shadowBlur=16; }
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(cx-19, MEM_TOP-8, 38, (MEM_BOT-MEM_TOP)+16, 9);
+  else ctx.rect(cx-19, MEM_TOP-8, 38, (MEM_BOT-MEM_TOP)+16);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  drawLabel(cx, MEM_Y+4, label, '#0d1420', 13);
+}
+
+// ============================================================
+// ETC simulator state
+// ============================================================
+const Sim = {
+  carriers:[],      // NADH / FADH2 molecules approaching/docking
+  packets:[],        // electron pairs travelling I->Q->III->cytc->IV
+  hAnim:[],          // proton-pump animation (matrix->IMS)
+  synthTravelers:[],// proton flowing down through ATP synthase (IMS->matrix)
+  h2oMarkers:[],
+  imsH:0, totalHPumped:0, atpMade:0, nadhUsed:0, fadh2Used:0, o2Used:0, h2oMade:0, protonsThroughSynthase:0,
+  activeComplex:null, activeTimer:0,
+  autoMode:true, autoTimer:0,
+
+  init(){
+    this.carriers=[]; this.packets=[]; this.hAnim=[]; this.synthTravelers=[];
+    this.h2oMarkers=[];
+    this.imsH=0; this.totalHPumped=0; this.atpMade=0; this.nadhUsed=0; this.fadh2Used=0; this.o2Used=0; this.h2oMade=0; this.protonsThroughSynthase=0;
+    this.activeComplex=null; this.activeTimer=0; this.autoTimer=0;
+  },
+
+  spawnCarrier(type){
+    const target = type==='nadh' ? 'c1' : 'c2';
+    this.carriers.push({ type, x:rand(LEFT+10,LEFT+40)+(target==='c2'?90:0), y:rand(MAT_TOP+35,MAT_TOP+55), stage:'approach', target, timer:0 });
+  },
+  pumpH(complexId){
+    this.hAnim.push({ cx:CX[complexId], t:0 });
+    this.hAnim.push({ cx:CX[complexId], t:-16 });
+    this.imsH += 2; this.totalHPumped += 2; // reflect the biological event immediately; hAnim below is purely cosmetic
+    this.activeComplex = complexId; this.activeTimer = 26;
+  },
+
+  step(){
+    // --- auto supply ---
+    if(this.autoMode){
+      this.autoTimer++;
+      if(this.autoTimer>50 && Math.random()<0.05){ this.spawnCarrier('nadh'); this.autoTimer=0; }
+      else if(this.autoTimer>50 && Math.random()<0.04){ this.spawnCarrier('fadh2'); this.autoTimer=0; }
+    }
+    if(this.activeTimer>0) this.activeTimer--; else this.activeComplex=null;
+
+    // --- carriers (NADH / FADH2) ---
+    for(const c of this.carriers){
+      if(c.stage==='approach'){
+        const tx = CX[c.target], ty = MAT_TOP+30;
+        c.x += (tx-c.x)*0.06; c.y += (ty-c.y)*0.06;
+        if(Math.abs(c.x-tx)<3 && Math.abs(c.y-ty)<3){ c.stage='docked'; c.timer=0; }
+      } else if(c.stage==='docked'){
+        c.timer++;
+        if(c.timer>22){
+          c.stage='release';
+          if(c.type==='nadh'){ this.nadhUsed++; this.packets.push({ x:CX.c1, y:MEM_Y, stage:'atC1', timer:0, source:'nadh' }); this.pumpH('c1'); }
+          else { this.fadh2Used++; this.packets.push({ x:CX.c2, y:MEM_Y, stage:'atC2', timer:0, source:'fadh2' }); }
+        }
+      } else if(c.stage==='release'){
+        c.y -= 0.9; c.x -= 0.4;
+      }
+    }
+    this.carriers = this.carriers.filter(c=> !(c.stage==='release' && c.y < MAT_TOP-10));
+
+    // --- electron packets (I/II -> Q -> III -> cytc -> IV -> O2/H2O) ---
+    for(const p of this.packets){
+      if(p.stage==='atC1' || p.stage==='atC2'){
+        p.timer++;
+        if(p.timer>18){ p.stage='toQ'; }
+      } else if(p.stage==='toQ'){
+        const tx=CX.c3, ty=MEM_Y;
+        p.x += (tx-p.x)*0.07; p.y += (ty-p.y)*0.07;
+        if(Math.abs(p.x-tx)<3){ p.stage='atC3'; p.timer=0; this.pumpH('c3'); }
+      } else if(p.stage==='atC3'){
+        p.timer++;
+        if(p.timer>18){ p.stage='toCytc'; }
+      } else if(p.stage==='toCytc'){
+        const tx=CX.c4, ty=CYTC_Y;
+        p.x += (tx-p.x)*0.06; p.y += (ty-p.y)*0.06;
+        if(Math.abs(p.x-tx)<3 && Math.abs(p.y-ty)<3){
+          p.stage='atC4'; p.timer=0; this.pumpH('c4'); this.o2Used++;
+          // fixed docking point where O2 waits to receive electrons + H+
+          p.o2x = CX.c4+34; p.o2y = MAT_TOP+42;
+          p.e0x=p.x; p.e0y=p.y; // electrons' starting point (just arrived via cyt c)
+          p.h1x = CX.c4-18; p.h1y = MAT_TOP+90;
+          p.h2x = CX.c4+70; p.h2y = MAT_TOP+95;
+        }
+      } else if(p.stage==='atC4'){
+        p.timer++;
+        // phase 1 (0-16): the two electrons travel from cyt c down onto O2
+        // phase 2 (16-32): two H+ from the matrix pool travel in and bind O2 + electrons
+        // phase 3 (32-44): flash -> forms H2O
+        if(p.timer>44){
+          p.stage='done';
+          this.h2oMade++;
+          this.h2oMarkers.push({x:p.o2x, y:p.o2y, t:0});
+        }
+      }
+    }
+    this.packets = this.packets.filter(p=>p.stage!=='done');
+    this.h2oMarkers.forEach(m=>{ m.t++; m.y -= 0.6; });
+    this.h2oMarkers = this.h2oMarkers.filter(m=>m.t<90);
+
+    // --- proton pump animation (matrix -> IMS), purely cosmetic (imsH already updated in pumpH) ---
+    for(const h of this.hAnim){
+      h.t++;
+    }
+    this.hAnim = this.hAnim.filter(h=>h.t<=50);
+
+    // --- ATP synthase: proton flows IMS -> matrix, every 3 protons = 1 ATP ---
+    if(this.imsH>0){
+      const p = clamp(0.015 + this.imsH*0.0012, 0.015, 0.09);
+      if(Math.random()<p){
+        this.imsH--;
+        this.synthTravelers.push({ t:0 });
+        this.protonsThroughSynthase++;
+        if(this.protonsThroughSynthase % 3 === 0){ this.atpMade++; }
+      }
+    }
+    this.synthTravelers.forEach(s=>s.t++);
+    this.synthTravelers = this.synthTravelers.filter(s=>s.t<34);
+  },
+
+  draw(){
+    // membrane + regions
+    drawBilayerH();
+    drawLabel(LEFT+4, IMS_TOP+16, '막사이공간 (Intermembrane space)', 'rgba(230,237,247,0.55)', 11, 'left');
+    drawLabel(LEFT+4, MAT_BOT-8, '기질 (Matrix)', 'rgba(230,237,247,0.55)', 11, 'left');
+
+    // resting IMS protons (abstracted count)
+    const shown = Math.min(this.imsH, 34);
+    for(let i=0;i<shown;i++){
+      const x = LEFT+20 + (i*37)%(RIGHT-LEFT-40) + ((Math.floor(i*37/(RIGHT-LEFT-40))%2)*11);
+      const y = IMS_TOP+30 + (i*23)%(IMS_BOT-IMS_TOP-45);
+      drawDot(x,y,3,'#7ec8e3',4);
+    }
+
+    // complexes
+    drawComplex(CX.c1, 'Ⅰ', COMPLEX_COLORS.c1, this.activeComplex==='c1');
+    drawComplex(CX.c2, 'Ⅱ', COMPLEX_COLORS.c2, this.activeComplex==='c2');
+    drawComplex(CX.c3, 'Ⅲ', COMPLEX_COLORS.c3, this.activeComplex==='c3');
+    drawComplex(CX.c4, 'Ⅳ', COMPLEX_COLORS.c4, this.activeComplex==='c4');
+    // ATP synthase
+    ctx.save();
+    ctx.fillStyle=COMPLEX_COLORS.atp; ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=2;
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(CX.atp-16, MEM_TOP-8, 32, (MEM_BOT-MEM_TOP)+16, 9);
+    else ctx.rect(CX.atp-16, MEM_TOP-8, 32, (MEM_BOT-MEM_TOP)+16);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(CX.atp, MAT_TOP+26, 15, 11, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    drawLabel(CX.atp, MAT_TOP+56, 'ATP 합성효소', 'rgba(230,237,247,0.6)', 10);
+
+    // carriers (NADH/FADH2)
+    for(const c of this.carriers){
+      const color = c.type==='nadh' ? '#f28cb1' : '#ffd166';
+      const label = c.stage==='release' ? (c.type==='nadh'?'NAD⁺':'FAD') : (c.type==='nadh'?'NADH':'FADH₂');
+      drawDot(c.x,c.y,8,color,6);
+      drawLabel(c.x, c.y-13, label, color, 10);
+    }
+
+    // electron packets (ring color traces origin: NADH vs FADH2)
+    for(const p of this.packets){
+      const ringColor = p.source==='nadh' ? '#f28cb1' : '#ffd166';
+      if(p.stage==='atC4'){
+        const t = p.timer;
+        if(t<=16){
+          // phase 1: electrons travel from cyt c down onto O2
+          const f = clamp(t/16,0,1);
+          const ex = lerp(p.e0x, p.o2x, easeInOut(f)), ey = lerp(p.e0y, p.o2y, easeInOut(f));
+          drawLabel(p.o2x, p.o2y+16, 'O₂', '#5eead4', 12);
+          ctx.save(); ctx.strokeStyle=ringColor; ctx.globalAlpha=0.7; ctx.lineWidth=1.6;
+          ctx.beginPath(); ctx.arc(ex,ey,7,0,Math.PI*2); ctx.stroke(); ctx.restore();
+          drawDot(ex-4,ey,3.4,'#fff27a',8); drawDot(ex+4,ey,3.4,'#fff27a',8);
+        } else if(t<=32){
+          // phase 2: two H+ arrive from the matrix and bind with O2 + electrons
+          const f = clamp((t-16)/16,0,1);
+          drawLabel(p.o2x, p.o2y+16, 'O₂²⁻', '#5eead4', 12);
+          ctx.save(); ctx.strokeStyle=ringColor; ctx.globalAlpha=0.7; ctx.lineWidth=1.6;
+          ctx.beginPath(); ctx.arc(p.o2x,p.o2y,7,0,Math.PI*2); ctx.stroke(); ctx.restore();
+          drawDot(p.o2x-4,p.o2y,3.4,'#fff27a',8); drawDot(p.o2x+4,p.o2y,3.4,'#fff27a',8);
+          const hx1=lerp(p.h1x,p.o2x-5,easeInOut(f)), hy1=lerp(p.h1y,p.o2y+5,easeInOut(f));
+          const hx2=lerp(p.h2x,p.o2x+5,easeInOut(f)), hy2=lerp(p.h2y,p.o2y+5,easeInOut(f));
+          drawDot(hx1,hy1,3.2,'#7ec8e3',6); drawDot(hx2,hy2,3.2,'#7ec8e3',6);
+        } else {
+          // phase 3: flash -> H2O formed
+          const f = clamp((t-32)/12,0,1);
+          ctx.save(); ctx.globalAlpha = 1-f*0.3; ctx.fillStyle='#9ad0ff'; ctx.shadowColor='#9ad0ff'; ctx.shadowBlur=14*f;
+          ctx.beginPath(); ctx.arc(p.o2x,p.o2y,6+f*3,0,Math.PI*2); ctx.fill(); ctx.restore();
+          drawLabel(p.o2x, p.o2y+18, 'H₂O 생성!', '#9ad0ff', 12);
+        }
+      } else {
+        ctx.save(); ctx.strokeStyle=ringColor; ctx.globalAlpha=0.7; ctx.lineWidth=1.6;
+        ctx.beginPath(); ctx.arc(p.x,p.y,7,0,Math.PI*2); ctx.stroke(); ctx.restore();
+        drawDot(p.x-4,p.y,3.4,'#fff27a',8);
+        drawDot(p.x+4,p.y,3.4,'#fff27a',8);
+      }
+    }
+
+    // proton pump animations
+    for(const h of this.hAnim){
+      const t = clamp(h.t/50,0,1);
+      if(t<=0) continue;
+      const y = lerp(MEM_BOT+6, IMS_TOP+20, easeInOut(t));
+      drawDot(h.cx + (h.t<-3?-5:5), y, 3.6, '#7ec8e3', 6);
+    }
+    // ATP synthase proton flow (IMS->matrix)
+    for(const s of this.synthTravelers){
+      const t = clamp(s.t/34,0,1);
+      const y = lerp(IMS_BOT-10, MAT_TOP+18, easeInOut(t));
+      drawDot(CX.atp, y, 3.4, '#7ec8e3', 6);
+    }
+    if(this.protonsThroughSynthase>0 && this.protonsThroughSynthase%3===0 && this.synthTravelers.length>0){
+      drawLabel(CX.atp, MAT_TOP+10, '✦ATP', '#8fe3a3', 11);
+    }
+
+    // H2O drifting away after formation
+    for(const m of this.h2oMarkers) drawLabel(m.x, m.y, 'H₂O', '#9ad0ff', 11);
+
+    // energy-level inset
+    this.drawEnergyInset();
+
+    return `NADH 소비 ${this.nadhUsed} · FADH₂ 소비 ${this.fadh2Used} · O₂ 소비 ${this.o2Used} · H₂O 생성 ${this.h2oMade} · 막사이공간 H⁺ ${this.imsH} · <b>ATP 합성 ${this.atpMade}</b>`;
+  },
+
+  drawEnergyInset(){
+    const ox=RIGHT-150, oy=20, w=140, h=118;
+    ctx.save();
+    ctx.fillStyle='rgba(13,20,32,0.82)'; ctx.strokeStyle='rgba(148,178,214,0.25)'; ctx.lineWidth=1;
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(ox,oy,w,h,8); else ctx.rect(ox,oy,w,h);
+    ctx.fill(); ctx.stroke();
+    drawLabel(ox+w/2, oy+13, '전자의 에너지 준위', 'rgba(230,237,247,0.6)', 9.5);
+    const pts = [['nadh',ENERGY_LEVEL.nadh],['c1',ENERGY_LEVEL.c1],['c2',ENERGY_LEVEL.c2],['c3',ENERGY_LEVEL.c3],['c4',ENERGY_LEVEL.c4],['o2',ENERGY_LEVEL.o2]];
+    const maxE=210, x0=ox+14, x1=ox+w-10, y0=oy+22, y1=oy+h-10;
+    ctx.strokeStyle='rgba(148,178,214,0.5)'; ctx.lineWidth=1.6;
+    ctx.beginPath();
+    pts.forEach(([id,e],i)=>{
+      const px = lerp(x0,x1,i/(pts.length-1));
+      const py = lerp(y0,y1,1-e/maxE);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    pts.forEach(([id,e],i)=>{
+      const px = lerp(x0,x1,i/(pts.length-1));
+      const py = lerp(y0,y1,1-e/maxE);
+      const active = id===this.activeComplex || (id==='nadh' && this.carriers.some(c=>c.type==='nadh'&&c.stage!=='release'));
+      drawDot(px,py, active?4.4:2.6, active?'#fff27a':'#7ec8e3', active?8:0);
+    });
+    ctx.restore();
+  }
+};
+
+let playing=false;
+function drawFrame(){
+  ctx.clearRect(0,0,W,H);
+  const s = Sim.draw();
+  document.getElementById('stateBar').innerHTML = s;
+}
+function loop(){
+  if(playing) Sim.step();
+  drawFrame();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('legendBox').innerHTML = [
+  ['#f28cb1','NADH → 복합체 Ⅰ'], ['#ffd166','FADH₂ → 복합체 Ⅱ'],
+  ['#4C6EF5','복합체 Ⅰ'], ['#2E86C1','복합체 Ⅱ (H⁺ 펌핑 없음)'],
+  ['#8B5CF6','복합체 Ⅲ'], ['#E07A3F','복합체 Ⅳ (최종 전자 수용체 O₂)'],
+  ['#D9A441','ATP 합성효소'], ['#7ec8e3','H⁺ (수소 이온)'], ['#fff27a','전자 (e⁻)']
+].map(([c,l])=>`<div class="row"><span class="sw" style="background:${c}"></span>${l}</div>`).join('');
+
+document.getElementById('btnNadh').addEventListener('click', ()=>{ Sim.spawnCarrier('nadh'); playing=true; document.getElementById('btnPlay').textContent='❚❚ 일시정지'; });
+document.getElementById('btnFadh').addEventListener('click', ()=>{ Sim.spawnCarrier('fadh2'); playing=true; document.getElementById('btnPlay').textContent='❚❚ 일시정지'; });
+document.getElementById('autoMode').addEventListener('change', e=>{ Sim.autoMode = e.target.checked; });
+document.getElementById('btnPlay').addEventListener('click', ()=>{
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? '❚❚ 일시정지' : '▶ 재생';
+});
+document.getElementById('btnReset').addEventListener('click', ()=>{ Sim.init(); drawFrame(); });
+
+Sim.init();
+drawFrame();
+loop();
+})();
+</script>
+</body>
+</html>
