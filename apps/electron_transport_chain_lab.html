@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고등학교 생명과학 가상 실험실 - 세포 호흡: 전자전달계 & ATP 합성</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for energy diagram -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter & Do Hyeon -->
+    <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Do Hyeon', sans-serif;
+            background-color: #f8fafc;
+        }
+        .font-title {
+            font-family: 'Do Hyeon', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-white text-indigo-600 p-2 rounded-xl font-bold text-2xl shadow">⚡</div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-title tracking-wide">고등학교 생명과학 가상 실험실</h1>
+                    <p class="text-xs text-indigo-200">세포 호흡: 전자전달계, 이동성 전자운반체(CoQ & Cyt c) & 화학삼투적 ATP 합성</p>
+                </div>
+            </div>
+            <div class="bg-indigo-700/80 px-3.5 py-1.5 rounded-xl border border-indigo-500/30 text-xs font-title text-indigo-100 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                실시간 화학삼투 시뮬레이터 가동 중
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- Intro Banner -->
+        <div class="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-700 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h2 class="text-2xl font-title mb-1">세포 호흡: 전자전달계 & 화학삼투적 ATP 합성</h2>
+                <p class="text-sm text-amber-100">
+                    NADH 및 FADH₂의 전자 제공, 이동성 전자운반체(<strong>CoQ</strong>, <strong>Cyt c</strong>)의 전자 셔틀 이동, H⁺ 능동 펌핑, 최종 전자 수용체 산소(O₂)의 물(H₂O) 생성 및 ATP 합성효소 메커니즘을 탐구하세요.
+                </p>
+            </div>
+            <div class="bg-white/10 px-4 py-3 rounded-xl border border-white/20 text-center min-w-[180px] shrink-0">
+                <span class="block text-xs text-amber-100">막사이공간 수소이온 농도</span>
+                <span id="etc-status-badge" class="font-bold text-base sm:text-lg text-amber-200">높은 농도 기울기 (ΔpH)</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Controls & Parameters (Left 5 cols) -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
+                    <h3 class="font-title text-lg text-slate-700 border-b pb-2 flex items-center justify-between">
+                        <span class="flex items-center gap-2">🎛️ 전자전달계 물질 공급 & 조건</span>
+                        <span class="text-xs text-orange-600 font-semibold">고2 세포와 물질대사</span>
+                    </h3>
+
+                    <!-- NADH Supply Rate -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <label for="etc-nadh" class="text-xs font-semibold text-slate-700">NADH 공급 속도 (Complex I 전자 제공)</label>
+                            <span id="etc-nadh-val" class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-xs">보통 (5)</span>
+                        </div>
+                        <input type="range" id="etc-nadh" min="0" max="10" value="5" step="1" class="w-full accent-emerald-500 cursor-pointer" oninput="updateEtcParams()">
+                        <p class="text-[11px] text-slate-500">Complex I에 2e⁻ 전달 (NADH → NAD⁺ + 2H⁺ + 2e⁻)</p>
+                    </div>
+
+                    <!-- FADH2 Supply Rate -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <label for="etc-fadh2" class="text-xs font-semibold text-slate-700">FADH₂ 공급 속도 (Complex II 전자 제공)</label>
+                            <span id="etc-fadh2-val" class="font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded text-xs">보통 (3)</span>
+                        </div>
+                        <input type="range" id="etc-fadh2" min="0" max="10" value="3" step="1" class="w-full accent-cyan-500 cursor-pointer" oninput="updateEtcParams()">
+                        <p class="text-[11px] text-slate-500">Complex II에 2e⁻ 전달 (FADH₂ → FAD + 2H⁺ + 2e⁻)</p>
+                    </div>
+
+                    <!-- Oxygen (O2) Concentration -->
+                    <div class="space-y-1.5 bg-sky-50 p-3 rounded-xl border border-sky-100">
+                        <div class="flex justify-between items-center">
+                            <label for="etc-o2" class="text-xs font-bold text-sky-900 flex items-center gap-1">
+                                🫁 최종 전자 수용체 산소 (O₂)
+                            </label>
+                            <span id="etc-o2-val" class="font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded text-xs">충분 (100%)</span>
+                        </div>
+                        <input type="range" id="etc-o2" min="0" max="100" value="100" step="10" class="w-full accent-sky-600 cursor-pointer" oninput="updateEtcParams()">
+                        <p class="text-[11px] text-sky-800 leading-tight">
+                            💡 Complex IV에서 2H⁺ + ½O₂ + 2e⁻ → H₂O 환원 반응으로 물 생성.
+                        </p>
+                    </div>
+
+                    <!-- Inhibitors / Uncouplers Select -->
+                    <div class="space-y-1.5 bg-rose-50 p-3 rounded-xl border border-rose-100">
+                        <label for="etc-inhibitor" class="text-xs font-bold text-rose-800 flex items-center gap-1">
+                            ⚠️ 특수 물질 / 저해제 조건
+                        </label>
+                        <select id="etc-inhibitor" onchange="updateEtcParams()" class="w-full bg-white border border-rose-200 text-rose-900 text-xs rounded-lg p-2 font-medium focus:ring-rose-500">
+                            <option value="none">정상 상태 (저해제 없음)</option>
+                            <option value="cyanide">청산가리 (Cyanide / 시아나이드): Complex IV 저해</option>
+                            <option value="dnp">2,4-DNP (짝놀림제): 미토콘드리아 내막 수소이온 누출</option>
+                        </select>
+                        <p id="etc-inhibitor-desc" class="text-[11px] text-rose-700 leading-tight">
+                            정상 조건입니다. 수소 이온 펌핑과 ATP 합성이 화학삼투 메커니즘에 의해 원활하게 이루어집니다.
+                        </p>
+                    </div>
+
+                    <div class="pt-1 flex gap-3">
+                        <button onclick="resetEtcDefaults()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-xl transition-all text-xs">
+                            ↺ 조건 초기화
+                        </button>
+                        <button onclick="toggleEtcSimulation()" id="etc-pause-btn" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 rounded-xl transition-all text-xs shadow-sm">
+                            ⏸ 일시정지 / 재생
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CoQ and Cyt c Concept Card -->
+                <div class="bg-amber-50/90 p-4 rounded-2xl border border-amber-200 text-amber-900 space-y-2 text-xs">
+                    <div class="font-title text-sm flex items-center gap-1.5 text-amber-800">
+                        <span>🔄</span> 이동성 전자운반체 (CoQ & Cyt c) 역할
+                    </div>
+                    <ul class="space-y-1.5 leading-relaxed list-disc list-inside">
+                        <li><strong>CoQ (우비키논)</strong>: 지용성 소분자로 내막 지질 이중층 내부를 이동하며, Complex I과 II에서 얻은 2e⁻를 Complex III로 전달합니다.</li>
+                        <li><strong>Cyt c (사이토크롬 c)</strong>: 막사이공간 측 내막 표면에 결합한 단백질로, Complex III에서 2e⁻를 받아 Complex IV로 전달합니다.</li>
+                    </ul>
+                </div>
+
+                <!-- Live ETC Metrics -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                    <h3 class="font-title text-base text-slate-700 border-b pb-2 flex items-center gap-2">
+                        <span>⚡</span> 실시간 대사 측정 수치
+                    </h3>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100">
+                            <span class="block text-[11px] text-amber-800 mb-0.5">합성된 ATP</span>
+                            <span id="etc-metric-atp" class="text-xl font-bold text-amber-600 font-title">0</span>
+                            <span class="text-[10px] text-amber-500 block">분자 생성</span>
+                        </div>
+                        <div class="bg-sky-50 p-2.5 rounded-xl border border-sky-100">
+                            <span class="block text-[11px] text-sky-800 mb-0.5">생성된 H₂O</span>
+                            <span id="etc-metric-h2o" class="text-xl font-bold text-sky-600 font-title">0</span>
+                            <span class="text-[10px] text-sky-500 block">분자 생성</span>
+                        </div>
+                        <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-100">
+                            <span class="block text-[11px] text-rose-800 mb-0.5">막사이공간 H⁺</span>
+                            <span id="etc-metric-hpos" class="text-xl font-bold text-rose-600 font-title">0</span>
+                            <span class="text-[10px] text-rose-500 block">개 축적</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Animation & Energy Diagram (Right 7 cols) -->
+            <div class="lg:col-span-7 space-y-6">
+                <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <h3 class="font-title text-base text-slate-700 flex items-center gap-2">
+                            <span>🔬</span> 미토콘드리아 내막 전자전달계 & 이동성 전자운반체
+                        </h3>
+                        <span class="text-xs bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full font-medium">교과서 내막 구조 연동</span>
+                    </div>
+
+                    <!-- Interactive Canvas -->
+                    <div class="w-full bg-slate-950 rounded-xl overflow-hidden relative shadow-inner aspect-[16/10] flex items-center justify-center">
+                        <canvas id="etcCanvas" class="w-full h-full block"></canvas>
+
+                        <!-- Overlay Block Message -->
+                        <div id="etc-overlay-msg" class="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center text-white p-6 text-center transition-opacity opacity-0 pointer-events-none z-10">
+                            <span id="etc-overlay-title" class="text-2xl font-title text-rose-400 mb-2">전자 전달 중단!</span>
+                            <p id="etc-overlay-desc" class="text-xs text-slate-300 max-w-sm leading-relaxed">경고 메시지 내용</p>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Legend -->
+                    <div class="flex flex-wrap items-center justify-center gap-3 mt-3 text-xs text-slate-600">
+                        <div class="flex items-center gap-1"><span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block"></span> NADH (→NAD⁺)</div>
+                        <div class="flex items-center gap-1"><span class="w-3.5 h-3.5 rounded-sm bg-cyan-500 inline-block"></span> FADH₂ (→FAD)</div>
+                        <div class="flex items-center gap-1"><span class="w-3.5 h-3.5 rounded-full bg-amber-400 border border-amber-300 inline-block"></span> CoQ (2e⁻ 셔틀)</div>
+                        <div class="flex items-center gap-1"><span class="w-3.5 h-3.5 rounded-full bg-pink-500 border border-pink-300 inline-block"></span> Cyt c (2e⁻ 셔틀)</div>
+                        <div class="flex items-center gap-1"><span class="w-3.5 h-3.5 rounded-full bg-sky-400 inline-block"></span> O₂ → H₂O</div>
+                    </div>
+                </div>
+
+                <!-- Energy Level Diagram & Chart -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h3 class="font-title text-base text-slate-700 flex items-center gap-2">
+                            <span>📉</span> 전자의 단계적 자유 에너지 수준 변화 (교과서 그래프 연동)
+                        </h3>
+                        <span class="text-xs text-slate-400">단위: kJ/mol</span>
+                    </div>
+                    <div class="h-52 relative w-full">
+                        <canvas id="etcEnergyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+        <p>고등학교 생명과학 (세포와 물질대사 - 세포 호흡) 교과 과정 연계 가상 실험 시뮬레이터</p>
+        <p class="mt-1">HTML5 Canvas & Chart.js 기반 인터랙티브 시뮬레이션 환경</p>
+    </footer>
+
+    <script>
+        const etcCanvas = document.getElementById('etcCanvas');
+        const etcCtx = etcCanvas.getContext('2d');
+        let isEtcPaused = false;
+
+        let etcNadhRate = 5;
+        let etcFadh2Rate = 3;
+        let etcO2Conc = 100;
+        let etcInhibitor = 'none';
+
+        // Particle arrays
+        let donorParticles = [];    // NADH / FADH2 arriving at Complex I / II
+        let floatingWaste = [];     // NAD+ / FAD floating away into Matrix
+        let protonsLower = [];      // Protons accumulated in Intermembrane Space (bottom)
+        let pumpingProtons = [];   // Protons being actively pumped through Complexes I, III, IV
+        let synthaseProtons = [];  // Protons diffusing through ATP Synthase (bottom -> top)
+        let h2oParticles = [];     // Formed H2O molecules floating in Matrix
+        let floatingAtpParticles = []; // Formed ATP molecules floating in Matrix
+        let dnpLeakProtons = [];   // Protons leaking UP through DNP channels
+
+        // Carrier objects
+        let coqState = {
+            x: 0,
+            y: 0,
+            targetX: 0,
+            hasElectrons: false,
+            source: null, // 'c1' or 'c2'
+            status: 'idle' // 'idle', 'fetching', 'carrying', 'returning'
+        };
+
+        let cytcState = {
+            x: 0,
+            y: 0,
+            targetX: 0,
+            hasElectrons: false,
+            status: 'idle' // 'idle', 'fetching', 'carrying', 'returning'
+        };
+
+        // Queue of electrons waiting at Complex I, II, III
+        let c1ElectronQueue = 0;
+        let c2ElectronQueue = 0;
+        let c3ElectronQueue = 0;
+        let c4ElectronQueue = 0;
+
+        let atpSynthaseAngle = 0;
+        let totalAtpCount = 0;
+        let totalH2oCount = 0;
+
+        let nadhTimer = 0;
+        let fadh2Timer = 0;
+
+        let etcEnergyChartInstance = null;
+
+        function resizeEtcCanvas() {
+            if (!etcCanvas || !etcCanvas.parentElement) return;
+            const rect = etcCanvas.parentElement.getBoundingClientRect();
+            etcCanvas.width = rect.width;
+            etcCanvas.height = rect.height;
+            if (typeof drawEtcScene === 'function') drawEtcScene();
+        }
+
+        function toggleEtcSimulation() {
+            isEtcPaused = !isEtcPaused;
+            const btn = document.getElementById('etc-pause-btn');
+            if (btn) btn.innerText = isEtcPaused ? '▶ 재생' : '⏸ 일시정지 / 재생';
+        }
+
+        function updateEtcParams() {
+            etcNadhRate = parseInt(document.getElementById('etc-nadh').value);
+            etcFadh2Rate = parseInt(document.getElementById('etc-fadh2').value);
+            etcO2Conc = parseInt(document.getElementById('etc-o2').value);
+            etcInhibitor = document.getElementById('etc-inhibitor').value;
+
+            document.getElementById('etc-nadh-val').innerText = etcNadhRate === 0 ? "차단 (0)" : (etcNadhRate > 7 ? "빠름 (" + etcNadhRate + ")" : "보통 (" + etcNadhRate + ")");
+            document.getElementById('etc-fadh2-val').innerText = etcFadh2Rate === 0 ? "차단 (0)" : (etcFadh2Rate > 7 ? "빠름 (" + etcFadh2Rate + ")" : "보통 (" + etcFadh2Rate + ")");
+            document.getElementById('etc-o2-val').innerText = etcO2Conc === 0 ? "산소 결핍 (0%) ⚠️" : (etcO2Conc < 50 ? "부족 (" + etcO2Conc + "%)" : "충분 (" + etcO2Conc + "%)");
+
+            const desc = document.getElementById('etc-inhibitor-desc');
+            const overlay = document.getElementById('etc-overlay-msg');
+            const overlayTitle = document.getElementById('etc-overlay-title');
+            const overlayDesc = document.getElementById('etc-overlay-desc');
+
+            if (etcInhibitor === 'cyanide') {
+                desc.innerHTML = "⚠️ <strong>청산가리(Cyanide) 저해</strong>: Complex IV에 시아나이드가 결합하여 Cyt c로부터의 전자 전달 및 산소 환원을 완전 차단합니다.";
+                overlay.style.opacity = "1";
+                overlayTitle.innerText = "청산가리 독성 중독!";
+                overlayDesc.innerText = "Complex IV 산화효소가 차단되어 전자가 산소로 전달되지 못하고 수소 이온 펌핑이 멈췄습니다.";
+            } else if (etcInhibitor === 'dnp') {
+                desc.innerHTML = "⚠️ <strong>2,4-DNP (짝놀림제)</strong>: 미토콘드리아 내막에 H⁺ 누출 통로를 형성하여 ATP 합성 없이 에너지(열)만 발생시킵니다.";
+                overlay.style.opacity = "0";
+            } else if (etcO2Conc === 0) {
+                desc.innerHTML = "🚨 <strong>무산소 상태 (Hypoxia)</strong>: 최종 전자 수용체인 산소가 없어전자가 Complex IV에 축적되고 전자전달계가 마비됩니다.";
+                overlay.style.opacity = "1";
+                overlayTitle.innerText = "산소 결핍 (무산소 상태)!";
+                overlayDesc.innerText = "최종 전자 수용체인 산소(O₂)가 없어 전자 전달이 중단되고 ATP 생성이 멈추었습니다.";
+            } else {
+                desc.innerHTML = "정상 조건입니다. 수소 이온 펌핑과 ATP 합성이 화학삼투 메커니즘에 의해 원활하게 이루어집니다.";
+                overlay.style.opacity = "0";
+            }
+
+            const badge = document.getElementById('etc-status-badge');
+            if (etcInhibitor === 'cyanide' || etcO2Conc === 0) {
+                badge.innerText = "전자전달계 마비 🛑";
+                badge.className = "font-bold text-base sm:text-lg text-rose-300";
+            } else if (etcInhibitor === 'dnp') {
+                badge.innerText = "H⁺ 누출 / 열 발생 ⚠️";
+                badge.className = "font-bold text-base sm:text-lg text-amber-300";
+            } else {
+                badge.innerText = "높은 농도 기울기 (ΔpH) 🌟";
+                badge.className = "font-bold text-base sm:text-lg text-amber-200";
+            }
+        }
+
+        function resetEtcDefaults() {
+            document.getElementById('etc-nadh').value = 5;
+            document.getElementById('etc-fadh2').value = 3;
+            document.getElementById('etc-o2').value = 100;
+            document.getElementById('etc-inhibitor').value = 'none';
+
+            totalAtpCount = 0;
+            totalH2oCount = 0;
+            c1ElectronQueue = 0;
+            c2ElectronQueue = 0;
+            c3ElectronQueue = 0;
+            c4ElectronQueue = 0;
+
+            donorParticles = [];
+            floatingWaste = [];
+            protonsLower = [];
+            pumpingProtons = [];
+            synthaseProtons = [];
+            h2oParticles = [];
+            floatingAtpParticles = [];
+            dnpLeakProtons = [];
+
+            updateEtcParams();
+        }
+
+        function initEtcEnergyChart() {
+            const ctx = document.getElementById('etcEnergyChart').getContext('2d');
+            etcEnergyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['NADH/FADH₂', '복합체 I', '복합체 II', 'CoQ (이동성 운반체)', '복합체 III', 'Cyt c (이동성 운반체)', '복합체 IV', '½O₂ + 2H⁺ (H₂O)'],
+                    datasets: [
+                        {
+                            label: 'NADH 경로 에너지 준위 (kJ/mol)',
+                            data: [210, 180, null, 130, 90, 60, 30, 0],
+                            borderColor: '#10b981',
+                            backgroundColor: '#10b981',
+                            borderWidth: 3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            tension: 0.15,
+                            spanGaps: true
+                        },
+                        {
+                            label: 'FADH₂ 경로 에너지 준위 (kJ/mol)',
+                            data: [null, null, 150, 130, null, null, null, null],
+                            borderColor: '#06b6d4',
+                            backgroundColor: '#06b6d4',
+                            borderWidth: 2.5,
+                            borderDash: [5, 5],
+                            pointRadius: 5,
+                            spanGaps: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: { 
+                            title: { display: true, text: '전자 전달 단계 (산화·환원 연쇄)' },
+                            grid: { color: 'rgba(226, 232, 240, 0.6)' }
+                        },
+                        y: { 
+                            title: { display: true, text: '자유 에너지 수준 (kJ/mol)' }, 
+                            min: 0, 
+                            max: 220,
+                            ticks: { stepSize: 42 },
+                            grid: { color: 'rgba(203, 213, 225, 0.5)' }
+                        }
+                    },
+                    plugins: { 
+                        legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: { mode: 'index', intersect: false }
+                    }
+                }
+            });
+        }
+
+        function updateEtcPhysics() {
+            if (isEtcPaused) return;
+
+            let isBlocked = (etcInhibitor === 'cyanide' || etcO2Conc === 0);
+
+            let W = etcCanvas.width || 800;
+            let H = etcCanvas.height || 400;
+
+            let memTop = H * 0.35;
+            let memBot = H * 0.62;
+            let memMid = (memTop + memBot) / 2;
+
+            let c1X = W * 0.15;
+            let c2X = W * 0.28;
+            let coqHomeX = W * 0.40;
+            let c3X = W * 0.52;
+            let cytcHomeX = W * 0.64;
+            let c4X = W * 0.76;
+            let dnpX = W * 0.83;
+            let atpX = W * 0.90;
+
+            // Initialize carrier resting positions if 0
+            if (coqState.x === 0) {
+                coqState.x = coqHomeX;
+                coqState.y = memMid;
+            }
+            if (cytcState.x === 0) {
+                cytcState.x = cytcHomeX;
+                cytcState.y = memBot + 12;
+            }
+
+            // 1. Spawn donor molecules (NADH & FADH2) approaching from Matrix
+            if (!isBlocked) {
+                if (etcNadhRate > 0) {
+                    nadhTimer++;
+                    if (nadhTimer > (110 / etcNadhRate)) {
+                        nadhTimer = 0;
+                        donorParticles.push({
+                            type: 'NADH',
+                            x: c1X + (Math.random() - 0.5) * 15,
+                            y: memTop - 55,
+                            targetX: c1X,
+                            targetY: memTop - 8,
+                            vy: 1.2
+                        });
+                    }
+                }
+
+                if (etcFadh2Rate > 0) {
+                    fadh2Timer++;
+                    if (fadh2Timer > (130 / etcFadh2Rate)) {
+                        fadh2Timer = 0;
+                        donorParticles.push({
+                            type: 'FADH2',
+                            x: c2X + (Math.random() - 0.5) * 15,
+                            y: memTop - 55,
+                            targetX: c2X,
+                            targetY: memTop + 8,
+                            vy: 1.2
+                        });
+                    }
+                }
+            }
+
+            // 2. Move Donor Particles towards Complex I & II
+            for (let i = donorParticles.length - 1; i >= 0; i--) {
+                let d = donorParticles[i];
+                d.y += d.vy;
+
+                if (d.y >= d.targetY) {
+                    if (d.type === 'NADH') {
+                        c1ElectronQueue += 2;
+                        pumpProtons(c1X, 4); // Pump 4 H+ DOWN
+                        floatingWaste.push({
+                            label: 'NAD⁺',
+                            x: d.x,
+                            y: d.y - 5,
+                            vy: -1.0,
+                            vx: (Math.random() - 0.5) * 0.8,
+                            opacity: 1.0,
+                            color: '#10b981'
+                        });
+                    } else if (d.type === 'FADH2') {
+                        c2ElectronQueue += 2;
+                        floatingWaste.push({
+                            label: 'FAD',
+                            x: d.x,
+                            y: d.y - 5,
+                            vy: -1.0,
+                            vx: (Math.random() - 0.5) * 0.8,
+                            opacity: 1.0,
+                            color: '#06b6d4'
+                        });
+                    }
+                    donorParticles.splice(i, 1);
+                }
+            }
+
+            // 3. Update floating NAD+ / FAD waste particles
+            for (let i = floatingWaste.length - 1; i >= 0; i--) {
+                let w = floatingWaste[i];
+                w.y += w.vy;
+                w.x += w.vx;
+                w.opacity -= 0.015;
+                if (w.opacity <= 0) floatingWaste.splice(i, 1);
+            }
+
+            /* --- CoQ MOBILE ELECTRON CARRIER SHUTTLE LOGIC --- */
+            let coqSpeed = 2.8;
+            if (coqState.status === 'idle') {
+                if (c1ElectronQueue >= 2) {
+                    coqState.status = 'fetching';
+                    coqState.source = 'c1';
+                    coqState.targetX = c1X;
+                } else if (c2ElectronQueue >= 2) {
+                    coqState.status = 'fetching';
+                    coqState.source = 'c2';
+                    coqState.targetX = c2X;
+                } else {
+                    // Smoothly drift towards home position
+                    coqState.x += (coqHomeX - coqState.x) * 0.05;
+                }
+            } else if (coqState.status === 'fetching') {
+                if (coqState.x > coqState.targetX) {
+                    coqState.x = Math.max(coqState.targetX, coqState.x - coqSpeed);
+                } else {
+                    coqState.x = Math.min(coqState.targetX, coqState.x + coqSpeed);
+                }
+
+                if (Math.abs(coqState.x - coqState.targetX) < 3) {
+                    if (coqState.source === 'c1' && c1ElectronQueue >= 2) {
+                        c1ElectronQueue -= 2;
+                        coqState.hasElectrons = true;
+                    } else if (coqState.source === 'c2' && c2ElectronQueue >= 2) {
+                        c2ElectronQueue -= 2;
+                        coqState.hasElectrons = true;
+                    }
+                    coqState.status = 'carrying';
+                    coqState.targetX = c3X;
+                }
+            } else if (coqState.status === 'carrying') {
+                coqState.x += coqSpeed;
+                if (coqState.x >= c3X) {
+                    coqState.hasElectrons = false;
+                    c3ElectronQueue += 2;
+                    pumpProtons(c3X, 4); // Pump 4 H+ DOWN
+                    coqState.status = 'returning';
+                    coqState.targetX = coqHomeX;
+                }
+            } else if (coqState.status === 'returning') {
+                coqState.x -= coqSpeed;
+                if (coqState.x <= coqHomeX) {
+                    coqState.status = 'idle';
+                }
+            }
+
+            /* --- Cyt c MOBILE ELECTRON CARRIER SHUTTLE LOGIC --- */
+            let cytcSpeed = 2.6;
+            if (cytcState.status === 'idle') {
+                if (c3ElectronQueue >= 2 && !isBlocked) {
+                    cytcState.status = 'fetching';
+                    cytcState.targetX = c3X;
+                } else {
+                    cytcState.x += (cytcHomeX - cytcState.x) * 0.05;
+                }
+            } else if (cytcState.status === 'fetching') {
+                if (cytcState.x > cytcState.targetX) {
+                    cytcState.x = Math.max(cytcState.targetX, cytcState.x - cytcSpeed);
+                }
+                if (Math.abs(cytcState.x - cytcState.targetX) < 3) {
+                    if (c3ElectronQueue >= 2) {
+                        c3ElectronQueue -= 2;
+                        cytcState.hasElectrons = true;
+                    }
+                    cytcState.status = 'carrying';
+                    cytcState.targetX = c4X;
+                }
+            } else if (cytcState.status === 'carrying') {
+                cytcState.x += cytcSpeed;
+                if (cytcState.x >= c4X) {
+                    if (!isBlocked) {
+                        cytcState.hasElectrons = false;
+                        pumpProtons(c4X, 2); // Pump 2 H+ DOWN
+                        totalH2oCount++;
+
+                        h2oParticles.push({
+                            x: c4X + (Math.random() - 0.5) * 10,
+                            y: memTop - 12,
+                            vy: -1.2,
+                            vx: (Math.random() - 0.5) * 1.0,
+                            opacity: 1.0
+                        });
+
+                        cytcState.status = 'returning';
+                        cytcState.targetX = cytcHomeX;
+                    } else {
+                        // Stuck at Complex IV due to blockage/cyanide/hypoxia
+                        cytcState.x = c4X;
+                    }
+                }
+            } else if (cytcState.status === 'returning') {
+                cytcState.x -= cytcSpeed;
+                if (cytcState.x <= cytcHomeX) {
+                    cytcState.status = 'idle';
+                }
+            }
+
+            // 4. Update H2O particles
+            for (let i = h2oParticles.length - 1; i >= 0; i--) {
+                let h = h2oParticles[i];
+                h.y += h.vy;
+                h.x += h.vx;
+                h.opacity -= 0.015;
+                if (h.opacity <= 0) h2oParticles.splice(i, 1);
+            }
+
+            // 5. Update pumping protons (Matrix TOP -> Intermembrane Space BOTTOM)
+            for (let i = pumpingProtons.length - 1; i >= 0; i--) {
+                let p = pumpingProtons[i];
+                p.y += p.vy;
+                if (p.y >= memBot + 15) {
+                    if (protonsLower.length < 35) {
+                        protonsLower.push({
+                            x: p.x + (Math.random() - 0.5) * 20,
+                            y: memBot + 15 + Math.random() * 30
+                        });
+                    }
+                    pumpingProtons.splice(i, 1);
+                }
+            }
+
+            // 6. 2,4-DNP Uncoupler Effect (Leak protons UP into Matrix)
+            if (etcInhibitor === 'dnp') {
+                if (protonsLower.length > 3 && Math.random() < 0.12) {
+                    protonsLower.pop();
+                    dnpLeakProtons.push({
+                        x: dnpX + (Math.random() - 0.5) * 10,
+                        y: memBot + 10,
+                        vy: -2.0,
+                        opacity: 1.0
+                    });
+                }
+            }
+
+            for (let i = dnpLeakProtons.length - 1; i >= 0; i--) {
+                let p = dnpLeakProtons[i];
+                p.y += p.vy;
+                p.opacity -= 0.015;
+                if (p.y <= memTop - 15 || p.opacity <= 0) dnpLeakProtons.splice(i, 1);
+            }
+
+            // 7. Chemiosmotic ATP Synthase driving
+            let canSynthesizeAtp = (protonsLower.length >= 6) && (etcInhibitor !== 'dnp');
+
+            if (canSynthesizeAtp) {
+                atpSynthaseAngle += 0.12; 
+
+                if (Math.random() < 0.08 && protonsLower.length > 4) {
+                    protonsLower.pop(); 
+                    synthaseProtons.push({
+                        x: atpX + (Math.random() - 0.5) * 8,
+                        y: memBot + 15,
+                        vy: -2.2
+                    });
+                }
+            }
+
+            for (let i = synthaseProtons.length - 1; i >= 0; i--) {
+                let p = synthaseProtons[i];
+                p.y += p.vy;
+                if (p.y <= memTop - 20) {
+                    synthaseProtons.splice(i, 1);
+                    totalAtpCount++;
+
+                    floatingAtpParticles.push({
+                        x: atpX + (Math.random() - 0.5) * 20,
+                        y: memTop - 25,
+                        vy: -1.2,
+                        opacity: 1.0
+                    });
+                }
+            }
+
+            for (let i = floatingAtpParticles.length - 1; i >= 0; i--) {
+                let p = floatingAtpParticles[i];
+                p.y += p.vy;
+                p.opacity -= 0.015;
+                if (p.opacity <= 0) floatingAtpParticles.splice(i, 1);
+            }
+
+            for (let p of protonsLower) {
+                p.x += (Math.random() - 0.5) * 1.2;
+                p.y += (Math.random() - 0.5) * 1.2;
+                p.x = Math.max(20, Math.min(W - 20, p.x));
+                p.y = Math.max(memBot + 15, Math.min(H - 15, p.y));
+            }
+
+            document.getElementById('etc-metric-atp').innerText = totalAtpCount;
+            document.getElementById('etc-metric-h2o').innerText = totalH2oCount;
+            document.getElementById('etc-metric-hpos').innerText = protonsLower.length;
+        }
+
+        function pumpProtons(sourceX, count) {
+            let H = etcCanvas.height || 400;
+            let memTop = H * 0.35;
+
+            for (let i = 0; i < count; i++) {
+                pumpingProtons.push({
+                    x: sourceX + (Math.random() - 0.5) * 12,
+                    y: memTop - 25,
+                    vy: 1.8 + Math.random() * 0.8
+                });
+            }
+        }
+
+        function drawEtcScene() {
+            etcCtx.clearRect(0, 0, etcCanvas.width, etcCanvas.height);
+
+            let W = etcCanvas.width;
+            let H = etcCanvas.height;
+            if (!W || !H) return;
+
+            let memTop = H * 0.35;
+            let memBot = H * 0.62;
+            let memMid = (memTop + memBot) / 2;
+
+            // 1. Matrix Region (TOP)
+            etcCtx.fillStyle = '#0f172a';
+            etcCtx.fillRect(0, 0, W, memTop);
+            etcCtx.fillStyle = '#f8fafc';
+            etcCtx.font = 'bold 11px Inter';
+            etcCtx.fillText('미토콘드리아 기질 (Matrix - H⁺ 저농도 / pH 높음)', 15, 20);
+
+            // 2. Intermembrane Space Region (BOTTOM)
+            etcCtx.fillStyle = '#1e1b4b';
+            etcCtx.fillRect(0, memBot, W, H - memBot);
+            etcCtx.fillStyle = '#fbbf24';
+            etcCtx.fillText('막사이공간 (Intermembrane Space - H⁺ 고농도 / pH 낮음)', 15, H - 15);
+
+            // 3. Inner Membrane Region (MIDDLE)
+            etcCtx.fillStyle = '#1e293b';
+            etcCtx.fillRect(0, memTop, W, memBot - memTop);
+
+            // Phospholipid heads
+            etcCtx.fillStyle = '#f59e0b';
+            for (let x = 10; x < W; x += 14) {
+                etcCtx.beginPath();
+                etcCtx.arc(x, memTop + 4, 3.5, 0, Math.PI * 2);
+                etcCtx.fill();
+
+                etcCtx.beginPath();
+                etcCtx.arc(x, memBot - 4, 3.5, 0, Math.PI * 2);
+                etcCtx.fill();
+            }
+
+            let c1X = W * 0.15;
+            let c2X = W * 0.28;
+            let c3X = W * 0.52;
+            let c4X = W * 0.76;
+            let dnpX = W * 0.83;
+            let atpX = W * 0.90;
+
+            // Draw Protein Complexes
+            drawProteinComplex(c1X, memTop - 10, 48, (memBot - memTop) + 20, '#2563eb', '복합체 I', '(NADH 탈수소)');
+            drawProteinComplex(c2X, memTop + 10, 44, (memBot - memTop) - 10, '#0284c7', '복합체 II', '(숙신산 탈수소)');
+            drawProteinComplex(c3X, memTop - 10, 48, (memBot - memTop) + 20, '#7c3aed', '복합체 III', '(Cyt bc₁)');
+
+            let c4Color = (etcInhibitor === 'cyanide') ? '#9f1239' : '#dc2626';
+            drawProteinComplex(c4X, memTop - 10, 48, (memBot - memTop) + 20, c4Color, '복합체 IV', '(Cyt 산화효소)');
+
+            // Draw 2,4-DNP Channel if active
+            if (etcInhibitor === 'dnp') {
+                etcCtx.save();
+                etcCtx.fillStyle = '#ea580c';
+                etcCtx.fillRect(dnpX - 10, memTop + 5, 20, (memBot - memTop) - 10);
+                etcCtx.strokeStyle = '#f97316';
+                etcCtx.lineWidth = 1.5;
+                etcCtx.strokeRect(dnpX - 10, memTop + 5, 20, (memBot - memTop) - 10);
+
+                etcCtx.fillStyle = '#ffffff';
+                etcCtx.font = 'bold 8px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText('DNP 통로', dnpX, memMid - 2);
+                etcCtx.fillText('🔥 열 발생', dnpX, memMid + 8);
+                etcCtx.restore();
+            }
+
+            // Draw Oxygen Reduction Equation Guide at Complex IV
+            etcCtx.save();
+            etcCtx.fillStyle = '#38bdf8';
+            etcCtx.font = '9px Inter';
+            etcCtx.textAlign = 'center';
+            etcCtx.fillText('½O₂ + 2H⁺ + 2e⁻', c4X, memTop - 25);
+            etcCtx.fillStyle = '#60a5fa';
+            etcCtx.fillText('↓ (환원)', c4X, memTop - 16);
+            etcCtx.restore();
+
+            // Draw Mobile Carrier CoQ Shuttle & Electrons
+            drawCoQCarrier(memMid, c1X, c3X);
+
+            // Draw Mobile Carrier Cyt c Shuttle & Electrons
+            drawCytcCarrier(memBot + 12, c3X, c4X);
+
+            // Draw ATP Synthase
+            drawAtpSynthase(atpX, memTop, memBot, atpSynthaseAngle);
+
+            // Draw H+ Pumping Lines
+            drawPumpingArrows(c1X, memTop, memBot);
+            drawPumpingArrows(c3X, memTop, memBot);
+            drawPumpingArrows(c4X, memTop, memBot);
+
+            // Draw Donor Particles (NADH & FADH2)
+            for (let d of donorParticles) {
+                etcCtx.save();
+                etcCtx.fillStyle = d.type === 'NADH' ? '#10b981' : '#06b6d4';
+                etcCtx.strokeStyle = '#ffffff';
+                etcCtx.lineWidth = 1.5;
+                etcCtx.beginPath();
+                etcCtx.roundRect(d.x - 18, d.y - 8, 36, 16, 4);
+                etcCtx.fill();
+                etcCtx.stroke();
+
+                etcCtx.fillStyle = '#ffffff';
+                etcCtx.font = 'bold 9px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText(d.type, d.x, d.y + 3);
+                etcCtx.restore();
+            }
+
+            // Draw Floating Waste Particles
+            for (let w of floatingWaste) {
+                etcCtx.save();
+                etcCtx.globalAlpha = w.opacity;
+                etcCtx.fillStyle = w.color;
+                etcCtx.strokeStyle = '#ffffff';
+                etcCtx.lineWidth = 1.0;
+                etcCtx.beginPath();
+                etcCtx.roundRect(w.x - 16, w.y - 7, 32, 14, 4);
+                etcCtx.fill();
+                etcCtx.stroke();
+
+                etcCtx.fillStyle = '#ffffff';
+                etcCtx.font = 'bold 8px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText(w.label, w.x, w.y + 3);
+                etcCtx.restore();
+            }
+
+            // Draw H2O Formation particles
+            for (let h of h2oParticles) {
+                etcCtx.save();
+                etcCtx.globalAlpha = h.opacity;
+                etcCtx.fillStyle = '#38bdf8';
+                etcCtx.strokeStyle = '#ffffff';
+                etcCtx.lineWidth = 1.5;
+                etcCtx.beginPath();
+                etcCtx.arc(h.x, h.y, 8, 0, Math.PI * 2);
+                etcCtx.fill();
+                etcCtx.stroke();
+
+                etcCtx.fillStyle = '#0f172a';
+                etcCtx.font = 'bold 8px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText('H₂O', h.x, h.y + 3);
+                etcCtx.restore();
+            }
+
+            // Draw Pumping Protons (Matrix -> Intermembrane Space)
+            for (let p of pumpingProtons) {
+                etcCtx.save();
+                etcCtx.fillStyle = '#fef08a';
+                etcCtx.strokeStyle = '#eab308';
+                etcCtx.lineWidth = 2;
+                etcCtx.beginPath();
+                etcCtx.arc(p.x, p.y, 6.5, 0, Math.PI * 2);
+                etcCtx.fill();
+                etcCtx.stroke();
+
+                etcCtx.fillStyle = '#854d0e';
+                etcCtx.font = 'bold 9px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText('H⁺', p.x, p.y + 3);
+                etcCtx.restore();
+            }
+
+            // Draw DNP Leak Protons
+            for (let p of dnpLeakProtons) {
+                etcCtx.save();
+                etcCtx.globalAlpha = p.opacity;
+                etcCtx.fillStyle = '#fb923c';
+                etcCtx.strokeStyle = '#ea580c';
+                etcCtx.lineWidth = 1.5;
+                etcCtx.beginPath();
+                etcCtx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                etcCtx.fill();
+                etcCtx.stroke();
+
+                etcCtx.fillStyle = '#7c2d12';
+                etcCtx.font = 'bold 8px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText('H⁺', p.x, p.y + 3);
+                etcCtx.restore();
+            }
+
+            // Draw Synthase Protons
+            for (let p of synthaseProtons) {
+                etcCtx.save();
+                etcCtx.fillStyle = '#fef08a';
+                etcCtx.strokeStyle = '#f59e0b';
+                etcCtx.lineWidth = 2;
+                etcCtx.beginPath();
+                etcCtx.arc(p.x, p.y, 6.5, 0, Math.PI * 2);
+                etcCtx.fill();
+                etcCtx.stroke();
+
+                etcCtx.fillStyle = '#854d0e';
+                etcCtx.font = 'bold 9px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText('H⁺', p.x, p.y + 3);
+                etcCtx.restore();
+            }
+
+            // Draw Protons in Intermembrane Space
+            for (let p of protonsLower) {
+                etcCtx.save();
+                etcCtx.fillStyle = '#fbbf24';
+                etcCtx.strokeStyle = '#d97706';
+                etcCtx.lineWidth = 1.5;
+                etcCtx.beginPath();
+                etcCtx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                etcCtx.fill();
+                etcCtx.stroke();
+
+                etcCtx.fillStyle = '#78350f';
+                etcCtx.font = 'bold 9px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText('H⁺', p.x, p.y + 3);
+                etcCtx.restore();
+            }
+
+            // Draw Generated ATP
+            for (let p of floatingAtpParticles) {
+                etcCtx.save();
+                etcCtx.globalAlpha = p.opacity;
+                etcCtx.fillStyle = '#f59e0b';
+                etcCtx.beginPath();
+                etcCtx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+                etcCtx.fill();
+
+                etcCtx.fillStyle = '#ffffff';
+                etcCtx.font = 'bold 9px Inter';
+                etcCtx.textAlign = 'center';
+                etcCtx.fillText('ATP', p.x, p.y + 3);
+                etcCtx.restore();
+            }
+        }
+
+        /* --- CoQ CARRIER DRAWING WITH ELECTRON GLOW --- */
+        function drawCoQCarrier(memMid, c1X, c3X) {
+            etcCtx.save();
+
+            // Shuttle Trajectory Line
+            etcCtx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+            etcCtx.lineWidth = 2;
+            etcCtx.setLineDash([4, 4]);
+            etcCtx.beginPath();
+            etcCtx.moveTo(c1X, memMid);
+            etcCtx.lineTo(c3X, memMid);
+            etcCtx.stroke();
+
+            // CoQ Body
+            let isHolding = coqState.hasElectrons;
+            let radius = isHolding ? 16 : 14;
+
+            if (isHolding) {
+                etcCtx.shadowColor = '#f59e0b';
+                etcCtx.shadowBlur = 12;
+            }
+
+            etcCtx.fillStyle = isHolding ? '#f59e0b' : '#d97706';
+            etcCtx.strokeStyle = '#ffffff';
+            etcCtx.lineWidth = 2;
+            etcCtx.beginPath();
+            etcCtx.arc(coqState.x, coqState.y, radius, 0, Math.PI * 2);
+            etcCtx.fill();
+            etcCtx.stroke();
+
+            // Electron Orbits inside CoQ when carrying
+            if (isHolding) {
+                etcCtx.fillStyle = '#fef08a';
+                etcCtx.beginPath();
+                etcCtx.arc(coqState.x - 5, coqState.y - 3, 3.5, 0, Math.PI * 2);
+                etcCtx.arc(coqState.x + 5, coqState.y - 3, 3.5, 0, Math.PI * 2);
+                etcCtx.fill();
+            }
+
+            etcCtx.fillStyle = '#ffffff';
+            etcCtx.font = 'bold 9px Inter';
+            etcCtx.textAlign = 'center';
+            etcCtx.fillText(isHolding ? 'CoQH₂' : 'CoQ', coqState.x, coqState.y + (isHolding ? 7 : 3));
+
+            // Status label above
+            if (isHolding) {
+                etcCtx.fillStyle = '#fef08a';
+                etcCtx.font = 'bold 8px Inter';
+                etcCtx.fillText('2e⁻ 수용 셔틀', coqState.x, coqState.y - 20);
+            }
+
+            etcCtx.restore();
+        }
+
+        /* --- Cyt c CARRIER DRAWING WITH ELECTRON GLOW --- */
+        function drawCytcCarrier(cytcY, c3X, c4X) {
+            etcCtx.save();
+
+            // Shuttle Trajectory Line along Intermembrane Space Surface
+            etcCtx.strokeStyle = 'rgba(236, 72, 153, 0.3)';
+            etcCtx.lineWidth = 2;
+            etcCtx.setLineDash([4, 4]);
+            etcCtx.beginPath();
+            etcCtx.moveTo(c3X, cytcY);
+            etcCtx.lineTo(c4X, cytcY);
+            etcCtx.stroke();
+
+            let isHolding = cytcState.hasElectrons;
+            let radius = isHolding ? 14 : 12;
+
+            if (isHolding) {
+                etcCtx.shadowColor = '#ec4899';
+                etcCtx.shadowBlur = 12;
+            }
+
+            etcCtx.fillStyle = isHolding ? '#ec4899' : '#be185d';
+            etcCtx.strokeStyle = '#ffffff';
+            etcCtx.lineWidth = 2;
+            etcCtx.beginPath();
+            etcCtx.arc(cytcState.x, cytcState.y, radius, 0, Math.PI * 2);
+            etcCtx.fill();
+            etcCtx.stroke();
+
+            // Electron Orbits inside Cyt c
+            if (isHolding) {
+                etcCtx.fillStyle = '#fef08a';
+                etcCtx.beginPath();
+                etcCtx.arc(cytcState.x - 4, cytcState.y - 2, 3, 0, Math.PI * 2);
+                etcCtx.arc(cytcState.x + 4, cytcState.y - 2, 3, 0, Math.PI * 2);
+                etcCtx.fill();
+            }
+
+            etcCtx.fillStyle = '#ffffff';
+            etcCtx.font = 'bold 8px Inter';
+            etcCtx.textAlign = 'center';
+            etcCtx.fillText('Cyt c', cytcState.x, cytcState.y + (isHolding ? 6 : 3));
+
+            if (isHolding) {
+                etcCtx.fillStyle = '#fbcfe8';
+                etcCtx.font = 'bold 8px Inter';
+                etcCtx.fillText('2e⁻ 수용 셔틀', cytcState.x, cytcState.y + 22);
+            }
+
+            etcCtx.restore();
+        }
+
+        function drawPumpingArrows(x, topY, botY) {
+            etcCtx.save();
+            etcCtx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+            etcCtx.lineWidth = 2;
+            etcCtx.setLineDash([3, 3]);
+            etcCtx.beginPath();
+            etcCtx.moveTo(x, topY - 10);
+            etcCtx.lineTo(x, botY + 15);
+            etcCtx.stroke();
+            etcCtx.restore();
+        }
+
+        function drawProteinComplex(x, y, w, h, color, title, sub) {
+            etcCtx.save();
+            etcCtx.fillStyle = color;
+            etcCtx.beginPath();
+            etcCtx.roundRect(x - w / 2, y, w, h, 8);
+            etcCtx.fill();
+            etcCtx.strokeStyle = '#ffffff';
+            etcCtx.lineWidth = 1.5;
+            etcCtx.stroke();
+
+            etcCtx.fillStyle = '#ffffff';
+            etcCtx.font = 'bold 10px Inter';
+            etcCtx.textAlign = 'center';
+            etcCtx.fillText(title, x, y + h / 2 - 3);
+            etcCtx.font = '8px Inter';
+            etcCtx.fillText(sub, x, y + h / 2 + 9);
+            etcCtx.restore();
+        }
+
+        function drawAtpSynthase(x, topY, botY, angle) {
+            etcCtx.save();
+            etcCtx.fillStyle = '#059669';
+            etcCtx.fillRect(x - 15, topY - 10, 30, botY - topY + 20);
+
+            let headY = topY - 20;
+            etcCtx.save();
+            etcCtx.translate(x, headY);
+            etcCtx.rotate(angle);
+            etcCtx.fillStyle = '#10b981';
+            etcCtx.beginPath();
+            etcCtx.arc(0, 0, 20, 0, Math.PI * 2);
+            etcCtx.fill();
+            etcCtx.strokeStyle = '#ffffff';
+            etcCtx.lineWidth = 2;
+            etcCtx.stroke();
+
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 3) {
+                etcCtx.fillStyle = '#047857';
+                etcCtx.beginPath();
+                etcCtx.arc(Math.cos(a) * 13, Math.sin(a) * 13, 4.5, 0, Math.PI * 2);
+                etcCtx.fill();
+            }
+            etcCtx.restore();
+
+            etcCtx.fillStyle = '#ffffff';
+            etcCtx.font = 'bold 9px Inter';
+            etcCtx.textAlign = 'center';
+            etcCtx.fillText('ATP 합성효소', x, botY + 20);
+            etcCtx.restore();
+        }
+
+        function etcLoop() {
+            updateEtcPhysics();
+            drawEtcScene();
+            requestAnimationFrame(etcLoop);
+        }
+
+        window.onload = function() {
+            resizeEtcCanvas();
+            initEtcEnergyChart();
+            updateEtcParams();
+
+            etcLoop();
+        };
+
+        window.addEventListener('resize', () => {
+            resizeEtcCanvas();
+        });
+    </script>
+</body>
+</html>
